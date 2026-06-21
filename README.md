@@ -4,6 +4,10 @@ A tiny macOS menu bar app that shows **Claude Code's live status**: an animated 
 
 > Built so you can tab away during a long "thinking" stretch and still see, at a glance, whether Claude is working, waiting on you, or done.
 
+### ⬇️ [Download ClaudeStatusBar.dmg](https://github.com/m1ckc3s/claude-status-bar/releases/latest/download/ClaudeStatusBar.dmg)
+
+Signed and notarized. Open it, drag the app to Applications, launch once. See [Install](#install) for details.
+
 ## What it shows
 
 - **Thinking / working** — the Claude spark animates, with a live `1m 1s` timer.
