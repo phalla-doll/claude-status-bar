@@ -3,6 +3,12 @@
 All notable changes to Claude Status Bar are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-06-25
+
+### Added
+- **Multi-session support.** Each Claude Code session now gets its own state file (`~/.claude/statusbar/state.d/<session_id>.json`) instead of all sessions sharing one. The menu bar aggregates across every live session: the awaiting-permission dot shows if *any* session needs approval, the icon animates while *any* session is working, and it rests only when all are idle. The dropdown lists each live session as "project — status", with each session's elapsed timer updating live while the menu is open. This also fixes two issues in the single-file model: a finished session no longer rests the icon while another is still working, and a session can no longer inherit another's timer.
+- **Highest-priority session is surfaced.** With several sessions at once, the bar shows the most important one — awaiting-permission > working > idle, ties broken by most-recent activity — so a session blocked on your approval is never hidden behind one that's merely thinking. The permission label names the blocked repo (`api · Awaiting permission`, truncated when long), and a hover tooltip plus every dropdown row name the repo and whether it's running in the **CLI** or the **desktop app** (detected via `CLAUDE_CODE_ENTRYPOINT`).
+
 ## [0.2.2] - 2026-06-25
 
 ### Fixed
@@ -73,6 +79,7 @@ All notable changes to Claude Status Bar are documented here. This project follo
 - Signed and notarized DMG so it opens without a Gatekeeper warning.
 - Claude Code plugin marketplace manifest for the plugin install path.
 
+[0.3.0]: https://github.com/m1ckc3s/claude-status-bar/releases/tag/v0.3.0
 [0.2.2]: https://github.com/m1ckc3s/claude-status-bar/releases/tag/v0.2.2
 [0.2.1]: https://github.com/m1ckc3s/claude-status-bar/releases/tag/v0.2.1
 [0.2.0]: https://github.com/m1ckc3s/claude-status-bar/releases/tag/v0.2.0

@@ -14,10 +14,11 @@ A tiny macOS menu bar app that shows **Claude Code's live status**: an animated 
 <br>
 
 > [!IMPORTANT]
-> **Multi-session support.** This is built for one active Claude Code session at a time. If you
-> run multiple sessions at once (several terminals, or a terminal plus the desktop app), the menu
-> bar follows the most recently active one. Here is the why, and how you can add it yourself:
-> **[read the story →](https://github.com/m1ckc3s/claude-status-bar/issues/8)**
+> **Multi-session support.** When several Claude Code sessions run at once (multiple terminals, or
+> a terminal plus the desktop app), the menu bar surfaces the highest-priority one — a session
+> awaiting your permission is never hidden behind one that's merely thinking — names the repo, and
+> the dropdown lists every live session. Background:
+> **[issue #8 →](https://github.com/m1ckc3s/claude-status-bar/issues/8)**
 
 ---
 
@@ -84,7 +85,7 @@ The plugin installs the hooks but not the app itself, so drag **Claude Status Ba
 
 ## How it works
 
-The app is stateless. Claude Code hooks write the current status to `~/.claude/statusbar/state.json`; the app polls that file every 0.4s and renders the icon and label. `SessionStart` launches it; it self-quits once the Claude desktop app is closed and no Claude Code session is active (each active session is a file under `~/.claude/statusbar/sessions.d/`).
+The app is stateless. Claude Code hooks write each session's status to its own file under `~/.claude/statusbar/state.d/<session_id>.json`; the app polls that directory every 0.4s, aggregates across all live sessions, and renders one icon and label (permission dot if any session needs approval, animating if any is working, resting only when all are idle). `SessionStart` launches it; it self-quits once the Claude desktop app is closed and no Claude Code session is active (each active session is its file under `~/.claude/statusbar/state.d/`).
 
 The installer merges its hooks into `~/.claude/settings.json` (backing it up first), and the app's only network call is a once-a-day GitHub release check ([details](docs/privacy.md)).
 

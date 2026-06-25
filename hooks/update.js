@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Invoked by Claude Code hooks. Reads the hook JSON payload on stdin, maps the
-// event to a status, and atomically writes ~/.claude/statusbar/state.json.
+// event to a status, and atomically writes a PER-SESSION file:
+//   ~/.claude/statusbar/state.d/<session_id>.json
+// The app reads every file in state.d/ and aggregates them (see Sources/main.swift).
 // Usage: node update.js <prompt|pre|post|notify|permreq|stop>
 
 const fs = require("fs");
@@ -8,7 +10,7 @@ const os = require("os");
 const path = require("path");
 
 const dir = path.join(os.homedir(), ".claude", "statusbar");
-const statePath = path.join(dir, "state.json");
+const stateDir = path.join(dir, "state.d");
 const event = process.argv[2] || "";
 
 const TOOL_LABELS = {
@@ -17,6 +19,8 @@ const TOOL_LABELS = {
   WebFetch: "Browsing web", WebSearch: "Searching web", Task: "Delegating",
   TodoWrite: "Planning",
 };
+
+const safeId = (s) => String(s || "").replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 64) || "unknown";
 
 let raw = "";
 process.stdin.on("data", (d) => (raw += d));
@@ -33,17 +37,13 @@ process.stdin.on("end", () => {
     } catch {}
   }
 
-  // Register the session here too, so a session that predates the hook install (never
-  // fired SessionStart) still gets tracked once it does anything. See CLAUDE.md gotcha.
-  const sid = String(p.session_id || "").replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 64);
-  if (sid) {
-    try {
-      const sessDir = path.join(dir, "sessions.d");
-      fs.mkdirSync(sessDir, { recursive: true });
-      fs.writeFileSync(path.join(sessDir, sid), "");
-    } catch {}
-  }
+  // This session's own file is the unit of state AND the liveness marker. Writing it on any
+  // event also tracks sessions that predate the hook install (never fired SessionStart).
+  const sid = safeId(p.session_id);
+  const statePath = path.join(stateDir, sid + ".json");
 
+  // Read THIS session's prior state (not a shared global) so startedAt/transcript carry over
+  // within the session and never bleed across concurrent sessions.
   let prev = {};
   try { prev = JSON.parse(fs.readFileSync(statePath, "utf8")); } catch {}
 
@@ -86,9 +86,12 @@ process.stdin.on("end", () => {
       return;
   }
 
-  const out = { state, label, tool: p.tool_name || "", project, sessionId: p.session_id || "", transcript: p.transcript_path || prev.transcript || "", startedAt, ts };
+  // CLAUDE_CODE_ENTRYPOINT tags the surface running this session ("cli", "claude-desktop", …);
+  // carried over from prev for the odd event where the env var isn't set.
+  const entrypoint = process.env.CLAUDE_CODE_ENTRYPOINT || prev.entrypoint || "";
+  const out = { state, label, tool: p.tool_name || "", project, sessionId: p.session_id || "", transcript: p.transcript_path || prev.transcript || "", entrypoint, startedAt, ts };
   try {
-    fs.mkdirSync(dir, { recursive: true });
+    fs.mkdirSync(stateDir, { recursive: true });
     const tmp = statePath + "." + process.pid + ".tmp";
     fs.writeFileSync(tmp, JSON.stringify(out));
     fs.renameSync(tmp, statePath);

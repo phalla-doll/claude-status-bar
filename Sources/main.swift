@@ -2,11 +2,9 @@ import Cocoa
 
 final class StatusController: NSObject, NSMenuDelegate {
     let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-    let statePath = (NSHomeDirectory() as NSString).appendingPathComponent(".claude/statusbar/state.json")
-    let sessionsDir = (NSHomeDirectory() as NSString).appendingPathComponent(".claude/statusbar/sessions.d")
+    let stateDir = (NSHomeDirectory() as NSString).appendingPathComponent(".claude/statusbar/state.d")
     let claudeDesktopBundleID = "com.anthropic.claudefordesktop"
 
-    var lastMTime: Date = .distantPast
     var pollTimer: Timer?
     var animTimer: Timer?
     var frameIdx = 0
@@ -16,7 +14,30 @@ final class StatusController: NSObject, NSMenuDelegate {
     let launchGrace: TimeInterval = 5   // settle time after launch before we may quit
     let idleQuitDelay: TimeInterval = 3 // "not needed" must persist this long before quitting
 
-    var current: [String: Any] = [:]
+    // One parsed entry per live session file (state.d/<id>.json), refreshed each tick.
+    struct Session {
+        var id: String, state: String, label: String, project: String, transcript: String
+        var entrypoint: String  // CLAUDE_CODE_ENTRYPOINT: "cli", "claude-desktop", …
+        var startedAt: Double, ts: Double
+        var eff: String = ""   // effective state, recomputed once per tick in evaluate()
+
+        init(json o: [String: Any], id: String) {
+            self.id = id
+            self.state = o["state"] as? String ?? "idle"
+            self.label = o["label"] as? String ?? ""
+            self.project = o["project"] as? String ?? ""
+            self.transcript = o["transcript"] as? String ?? ""
+            self.entrypoint = o["entrypoint"] as? String ?? ""
+            self.startedAt = (o["startedAt"] as? NSNumber)?.doubleValue ?? 0
+            self.ts = (o["ts"] as? NSNumber)?.doubleValue ?? 0
+        }
+    }
+    var sessions: [String: Session] = [:]  // id -> latest parsed per-session state
+    var fileMTimes: [String: Date] = [:]   // "<id>.json" -> last-parsed mtime (re-parse only on change)
+    var soundPrev: [String: String] = [:]  // id -> previous raw state (completion-sound edge)
+    var turnStart: [String: Double] = [:]  // id -> active turn start (1-min sound gate)
+    var menuIsOpen = false                  // refresh the dropdown's per-session timers only while open
+    var sessionMenuItems: [(item: NSMenuItem, id: String)] = []
     var activeBase = ""        // label without the elapsed clock
     var startedAt: Double = 0  // unix seconds the current turn began (0 = no clock)
     var activeColor: NSColor? = nil
@@ -37,8 +58,6 @@ final class StatusController: NSObject, NSMenuDelegate {
         s.volume = 0.7 // the clip is loud at full system volume; play it a bit softer
         return s
     }()
-    var prevEff = ""               // last effective state, for detecting turn completion
-    var lastTurnStart: Double = 0  // active turn's start time, for the 1-minute gate
     var iconColor: NSColor? { iconSystem ? nil : brand } // nil => render as an adaptive template
     let codeGlyphs = ["✻", "✽", "✶", "✳", "✢"]
     let codePeaks: [CGFloat] = [1.0, 1.0, 1.0, 1.0, 1.0]
@@ -180,6 +199,19 @@ final class StatusController: NSObject, NSMenuDelegate {
 
     // MARK: menu
 
+    // The poll timer runs in .common mode, so it keeps firing while the menu tracks; we use that
+    // to live-update the per-session elapsed clocks. menuNeedsUpdate rebuilds the rows on each open.
+    func menuWillOpen(_ menu: NSMenu) { menuIsOpen = true }
+    func menuDidClose(_ menu: NSMenu) { menuIsOpen = false; sessionMenuItems.removeAll() }
+
+    // Re-title the open dropdown's session rows so their timers tick. Rows whose session ended
+    // freeze at their last value until the menu is reopened (the list itself is rebuilt on open).
+    func refreshOpenMenuTimers() {
+        for (item, id) in sessionMenuItems {
+            if let s = sessions[id] { item.title = sessionMenuLine(s) }
+        }
+    }
+
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         checkForUpdate() // refreshes the update cache for next open (gated to once a day)
@@ -188,6 +220,19 @@ final class StatusController: NSObject, NSMenuDelegate {
         openItem.target = self
         menu.addItem(openItem)
         menu.addItem(.separator())
+
+        sessionMenuItems.removeAll()
+        if !sessions.isEmpty {
+            menu.addItem(header("Sessions"))
+            for s in sessions.values.sorted(by: { $0.ts > $1.ts }) {
+                let it = NSMenuItem(title: sessionMenuLine(s), action: nil, keyEquivalent: "")
+                it.isEnabled = false
+                menu.addItem(it)
+                sessionMenuItems.append((it, s.id))  // kept so tick() can live-update the timers
+            }
+            menu.addItem(.separator())
+        }
+
         menu.addItem(header("Options"))
 
         let timerItem = NSMenuItem(title: "Show timer", action: #selector(toggleTimer), keyEquivalent: "")
@@ -240,6 +285,71 @@ final class StatusController: NSObject, NSMenuDelegate {
         return it
     }
 
+    // One (disabled, informational) menu row per live session: "project (Desktop) — Status 1m2s".
+    func sessionMenuLine(_ s: Session) -> String {
+        let now = Date().timeIntervalSince1970
+        let eff = s.eff.isEmpty ? effectiveState(s, now: now) : s.eff  // cached by evaluate() each tick
+        var status = statusText(s, eff: eff)
+        if eff == "thinking" || eff == "tool", s.startedAt > 0 {
+            status += "  " + elapsed(max(0, Int(now - s.startedAt)))
+        }
+        return "\(sessionName(s)) — \(status)"
+    }
+
+    // The state portion of a session's display, shared by the bar label and the menu/tooltip rows.
+    func statusText(_ s: Session, eff: String) -> String {
+        switch eff {
+        case "permission":       return "Awaiting permission"
+        case "thinking", "tool": return workingLabel(s)
+        default:                 return s.state == "done" ? "Done" : "Idle"
+        }
+    }
+
+    // "project" or "project (Desktop)" — the repo plus the surface it runs in (CLI / desktop app).
+    func sessionName(_ s: Session) -> String {
+        let proj = s.project.isEmpty ? "session" : s.project
+        let tag = surfaceTag(s.entrypoint)
+        return tag.isEmpty ? proj : "\(proj) (\(tag))"
+    }
+
+    // CLAUDE_CODE_ENTRYPOINT -> a short human tag.
+    func surfaceTag(_ entrypoint: String) -> String {
+        switch entrypoint {
+        case "cli":                       return "CLI"
+        case "claude-desktop":            return "Desktop"
+        case "vscode", "vscode-insiders": return "VS Code"
+        case "":                          return ""
+        default:                          return entrypoint
+        }
+    }
+
+    // Keep the bar narrow: over `max` chars, show the first `keep` + an ellipsis (full text stays in the tooltip).
+    func truncated(_ s: String, max: Int = 20, keep: Int = 18) -> String {
+        s.count > max ? String(s.prefix(keep)) + "…" : s
+    }
+
+    // Rank a session's EFFECTIVE state for surfacing (higher = more important), so a session
+    // awaiting YOUR permission is never hidden behind one merely thinking. `eff` only ever yields
+    // permission / thinking / tool / idle (done collapses to idle; waiting is never emitted).
+    func priority(of eff: String) -> Int {
+        switch eff {
+        case "permission":       return 2
+        case "thinking", "tool": return 1
+        default:                 return 0   // idle / unknown
+        }
+    }
+
+    func workingLabel(_ s: Session) -> String {
+        if !s.label.isEmpty { return s.label }
+        return s.state == "tool" ? "Working…" : "Thinking…"
+    }
+
+    // "1m 1s" / "43s" — Claude Code's elapsed-clock style.
+    func elapsed(_ secs: Int) -> String {
+        let m = secs / 60, s = secs % 60
+        return m > 0 ? "\(m)m \(s)s" : "\(s)s"
+    }
+
     @objc func quit() { NSApp.terminate(nil) }
 
     @objc func openClaude() {
@@ -280,58 +390,101 @@ final class StatusController: NSObject, NSMenuDelegate {
 
     func tick() {
         checkLifecycle()
-        let fm = FileManager.default
-        guard let attrs = try? fm.attributesOfItem(atPath: statePath),
-              let m = attrs[.modificationDate] as? Date else {
-            evaluate(); return
-        }
-        if m != lastMTime {
-            lastMTime = m
-            if let data = fm.contents(atPath: statePath),
-               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                current = obj
-            }
-        }
+        reloadSessions()
         evaluate()
+        if menuIsOpen { refreshOpenMenuTimers() }
     }
 
+    // The .json session files currently in state.d/ (ignores the .tmp files mid-write).
+    func stateFileNames() -> [String] {
+        ((try? FileManager.default.contentsOfDirectory(atPath: stateDir)) ?? []).filter { $0.hasSuffix(".json") }
+    }
+
+    // Refresh `sessions` from state.d/, re-parsing only files whose mtime changed (writes are
+    // atomic renames, so a content update bumps mtime and is never read torn).
+    func reloadSessions() {
+        let fm = FileManager.default
+        let files = stateFileNames()
+        let present = Set(files)
+        for key in Array(fileMTimes.keys) where !present.contains(key) {   // file gone -> drop the session
+            fileMTimes[key] = nil
+            sessions[(key as NSString).deletingPathExtension] = nil
+        }
+        for f in files {
+            let full = (stateDir as NSString).appendingPathComponent(f)
+            guard let attrs = try? fm.attributesOfItem(atPath: full),
+                  let m = attrs[.modificationDate] as? Date else { continue }
+            if fileMTimes[f] == m { continue }   // unchanged since last parse
+            fileMTimes[f] = m
+            guard let data = fm.contents(atPath: full),
+                  let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+            let id = (f as NSString).deletingPathExtension
+            sessions[id] = Session(json: o, id: id)
+        }
+    }
+
+    // Each tick: refresh every session's effective state and completion-chime bookkeeping, then
+    // surface a single session in the bar.
     func evaluate() {
-        let state = current["state"] as? String ?? "idle"
-        var label = current["label"] as? String ?? ""
-        let ts = (current["ts"] as? NSNumber)?.doubleValue ?? 0
-        let started = (current["startedAt"] as? NSNumber)?.doubleValue ?? 0
-        let age = Date().timeIntervalSince1970 - ts
+        let now = Date().timeIntervalSince1970
+        var chime = false
 
-        var eff = state
-        // Stop fires on normal completion but NOT on an Esc interrupt or a denied permission
-        // prompt: Claude Code writes "[Request interrupted by user]" to the transcript and ends
-        // with no hook, freezing state.json. Recover off that marker. (Force-quit writes no
-        // marker; lifecycle.js handles that case.) Full rationale in CLAUDE.md.
-        if state == "thinking" || state == "tool" || state == "permission" {
-            if age > 900 { eff = "idle"; label = "" } // absolute safety net
-            else if let tr = current["transcript"] as? String,
-                    let last = lastLine(ofFileAt: tr),
-                    last.contains("interrupted by user") {
-                eff = "idle"; label = ""
-            }
+        for id in Array(sessions.keys) {
+            guard var s = sessions[id] else { continue }
+            s.eff = effectiveState(s, now: now)   // compute once per tick; the menu + tooltip reuse it
+            sessions[id] = s
+            if soundEdgeDone(s, now: now) { chime = true }
         }
+        for id in Array(soundPrev.keys) where sessions[id] == nil { soundPrev[id] = nil; turnStart[id] = nil }
+        if chime, playCompletionSound { completionSound?.play() }
 
-        // Chime once when a turn that ran >= 1 min transitions to "done".
-        if (eff == "thinking" || eff == "tool"), started > 0 { lastTurnStart = started }
-        if eff == "done", prevEff != "done", playCompletionSound,
-           lastTurnStart > 0, Date().timeIntervalSince1970 - lastTurnStart >= 60 {
-            completionSound?.play()
+        // Surface the single highest-priority session (permission > working > …); ties broken by
+        // recency, so within a tier the most recently active session wins.
+        let lead = sessions.values.max { a, b in
+            let pa = priority(of: a.eff), pb = priority(of: b.eff)
+            return pa == pb ? a.ts < b.ts : pa < pb
         }
-        if eff == "done" { lastTurnStart = 0 }
-        prevEff = eff
+        statusItem.button?.toolTip = lead.map(sessionMenuLine)  // names repo + surface + state on hover
 
-        switch eff {
-        case "thinking":  render(label: label.isEmpty ? "Thinking…" : label, color: iconColor, animate: true,  startedAt: started)
-        case "tool":      render(label: label.isEmpty ? "Working…"  : label, color: iconColor, animate: true,  startedAt: started)
-        case "permission":render(label: "Awaiting permission", color: amber, animate: false, startedAt: 0, dot: true)
-        case "waiting":   render(label: label.isEmpty ? "Waiting" : label, color: iconColor, animate: false, startedAt: 0)
-        default:          render(label: "", color: iconColor, animate: false, startedAt: 0) // done + idle: just the orange spark
+        guard let lead = lead else { renderResting(); return }
+        switch lead.eff {
+        case "permission":
+            // Name the blocked repo so you know WHICH session needs you (truncated; full name in tooltip).
+            let base = statusText(lead, eff: lead.eff)
+            let lbl = lead.project.isEmpty ? base : "\(truncated(lead.project)) · \(base)"
+            render(label: lbl, color: amber, animate: false, startedAt: 0, dot: true)
+        case "thinking", "tool":
+            render(label: statusText(lead, eff: lead.eff), color: iconColor, animate: true, startedAt: lead.startedAt)
+        default:
+            renderResting()   // done / idle: just the resting spark
         }
+    }
+
+    func renderResting() { render(label: "", color: iconColor, animate: false, startedAt: 0) }
+
+    // Per-session effective state with the same recovery the single-file model used: an absolute
+    // age cap, plus the transcript "interrupted by user" marker (Esc / denied permission fire no
+    // hook, freezing the file). "done" collapses to rest. Full rationale in CLAUDE.md.
+    func effectiveState(_ s: Session, now: Double) -> String {
+        if s.state == "thinking" || s.state == "tool" || s.state == "permission" {
+            if now - s.ts > 900 { return "idle" }                       // absolute safety net
+            if !s.transcript.isEmpty, let last = lastLine(ofFileAt: s.transcript),
+               last.contains("interrupted by user") { return "idle" }
+            return s.state
+        }
+        return s.state == "done" ? "idle" : s.state
+    }
+
+    // Detect a session's working->done edge for the chime (turns >= 1 min only). Updates the
+    // per-session bookkeeping every call and returns true exactly once per qualifying edge.
+    func soundEdgeDone(_ s: Session, now: Double) -> Bool {
+        let prev = soundPrev[s.id] ?? ""
+        if s.state == "thinking" || s.state == "tool", s.startedAt > 0 { turnStart[s.id] = s.startedAt }
+        var edge = false
+        if s.state == "done", prev != "done", let st = turnStart[s.id], st > 0, now - st >= 60 { edge = true }
+        if s.state == "done" { turnStart[s.id] = 0 }
+        soundPrev[s.id] = s.state
+        return edge
     }
 
     // MARK: self-quit lifecycle (rationale + warmup-churn history in CLAUDE.md)
@@ -340,9 +493,7 @@ final class StatusController: NSObject, NSMenuDelegate {
         NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == claudeDesktopBundleID }
     }
 
-    func sessionCount() -> Int {
-        (try? FileManager.default.contentsOfDirectory(atPath: sessionsDir).count) ?? 0
-    }
+    func sessionCount() -> Int { stateFileNames().count }
 
     // Stay while Claude desktop is open OR a session is active; otherwise quit after a
     // short debounced grace (warmup-session churn must not kill us).
@@ -405,9 +556,7 @@ final class StatusController: NSObject, NSMenuDelegate {
         guard let button = statusItem.button else { return }
         var text = activeBase
         if showTimer, startedAt > 0 {
-            let secs = max(0, Int(Date().timeIntervalSince1970 - startedAt))
-            let m = secs / 60, s = secs % 60
-            text += "  " + (m > 0 ? "\(m)m \(s)s" : "\(s)s") // Claude Code style: "1m 1s" / "43s"
+            text += "  " + elapsed(max(0, Int(Date().timeIntervalSince1970 - startedAt)))
         }
         if text.isEmpty {
             button.imagePosition = .imageOnly
