@@ -185,6 +185,7 @@ final class StatusController: NSObject, NSMenuDelegate {
     struct Session {
         var id: String, state: String, label: String, project: String, transcript: String
         var entrypoint: String  // CLAUDE_CODE_ENTRYPOINT: "cli", "claude-desktop", …
+        var termProgram: String // TERM_PROGRAM for CLI sessions: "Apple_Terminal", "iTerm.app", …
         var startedAt: Double, ts: Double
         var eff: String = ""   // effective state, recomputed once per tick in evaluate()
 
@@ -195,6 +196,7 @@ final class StatusController: NSObject, NSMenuDelegate {
             self.project = o["project"] as? String ?? ""
             self.transcript = o["transcript"] as? String ?? ""
             self.entrypoint = o["entrypoint"] as? String ?? ""
+            self.termProgram = o["term_program"] as? String ?? ""
             self.startedAt = (o["startedAt"] as? NSNumber)?.doubleValue ?? 0
             self.ts = (o["ts"] as? NSNumber)?.doubleValue ?? 0
         }
@@ -416,8 +418,8 @@ final class StatusController: NSObject, NSMenuDelegate {
                 let now = Date().timeIntervalSince1970
                 let eff = s.eff.isEmpty ? effectiveState(s, now: now) : s.eff
                 let view = SessionRowView(id: s.id, width: CGFloat(uiConfig()["boxWidth"] ?? 300))
-                let sid = s.id, ep = s.entrypoint
-                view.onClick = { [weak self] in menu.cancelTracking(); self?.openSession(sid, entrypoint: ep) }
+                let sid = s.id, ep = s.entrypoint, tp = s.termProgram
+                view.onClick = { [weak self] in menu.cancelTracking(); self?.openSession(sid, entrypoint: ep, termProgram: tp) }
                 configureSessionRow(view, s, eff: eff)
                 let it = NSMenuItem()
                 it.view = view
@@ -720,15 +722,29 @@ final class StatusController: NSObject, NSMenuDelegate {
         }
     }
 
-    // Desktop session click: just focus the Claude app. Do NOT use claude://resume?session=<id>,
+    // Row click. Desktop session: focus the Claude app. Do NOT use claude://resume?session=<id>,
     // that calls importCliSession() and spawns a duplicate "ungrouped" session record
     // (local_<random>.json with cliSessionId=<id>) every click, it's an import verb, not focus.
     // The clean focus path (claude://code/<bridgeSessionId>) needs an opaque session_/cse_ bridge
     // id the app never exposes to us (not in env, not derivable from the UUID, undefined on disk).
-    // So app-to-front is the safe behavior. CLI sessions: no-op for now (terminal focus = issue #19).
-    func openSession(_ id: String, entrypoint: String) {
-        guard entrypoint == "claude-desktop" else { return }
-        openClaude()
+    // CLI session: bring its terminal APP to the front (zero permission). Targeting the exact
+    // window/tab needs a one-time Automation grant, deferred to the opt-in build (issue #19).
+    func openSession(_ id: String, entrypoint: String, termProgram: String) {
+        if entrypoint == "claude-desktop" { openClaude(); return }
+        // Map TERM_PROGRAM to a name `open -a` understands; most terminals match verbatim.
+        let app: String
+        switch termProgram {
+        case "Apple_Terminal": app = "Terminal"
+        case "iTerm.app":      app = "iTerm"
+        case "vscode":         app = "Visual Studio Code"
+        case "WarpTerminal":   app = "Warp"
+        case "":               return  // unknown surface, nothing to focus
+        default:               app = termProgram  // Ghostty, WezTerm, Tabby, Hyper, kitty, …
+        }
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        p.arguments = ["-a", app]
+        try? p.run()
     }
 
 

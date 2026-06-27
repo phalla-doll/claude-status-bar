@@ -3,6 +3,18 @@
 All notable changes to Claude Status Bar are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-06-26
+
+### Added
+- **Multi-session support.** The menu bar now tracks every running Claude Code session at once instead of one at a time. When several are active it surfaces the most important one in the bar (a session awaiting your permission outranks one that's working, which outranks idle) and lists them all in the dropdown.
+- **Session dropdown.** Each running session gets its own row showing its project, a live status icon (a spinner while working, an amber dot when it needs your approval, a caret when resting), an elapsed timer, and a CLI or APP tag for where it's running.
+- **Click a session to jump to it.** Clicking a desktop-app session brings the Claude app forward; clicking a terminal session brings its terminal app forward. Heads up: it raises the terminal app, not a specific window or tab, so if you have several terminal windows open it surfaces your most recent one, not necessarily the exact session you clicked. Precise per-tab focus is in progress: [issue #19](https://github.com/m1ckc3s/claude-status-bar/issues/19).
+- **Hide idle sessions** after a delay you choose (5, 15, or 30 minutes, 1 hour, or never), so the list stays focused on what's active.
+- **Intel Mac support.** The app now ships as a universal binary and runs natively on both Apple Silicon and Intel Macs.
+
+### Changed
+- The menu is now organized around sessions: a Sessions list at the top, with Options, animation, and color settings below.
+
 ## [0.2.2] - 2026-06-25
 
 ### Fixed
@@ -73,6 +85,7 @@ All notable changes to Claude Status Bar are documented here. This project follo
 - Signed and notarized DMG so it opens without a Gatekeeper warning.
 - Claude Code plugin marketplace manifest for the plugin install path.
 
+[0.3.0]: https://github.com/m1ckc3s/claude-status-bar/releases/tag/v0.3.0
 [0.2.2]: https://github.com/m1ckc3s/claude-status-bar/releases/tag/v0.2.2
 [0.2.1]: https://github.com/m1ckc3s/claude-status-bar/releases/tag/v0.2.1
 [0.2.0]: https://github.com/m1ckc3s/claude-status-bar/releases/tag/v0.2.0

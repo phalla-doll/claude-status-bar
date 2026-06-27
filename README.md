@@ -17,8 +17,11 @@ A tiny macOS menu bar app that shows **Claude Code's live status**: an animated 
 > **Multi-session support.** When several Claude Code sessions run at once (multiple terminals, or
 > a terminal plus the desktop app), the menu bar surfaces the highest-priority one — a session
 > awaiting your permission is never hidden behind one that's merely thinking — names the repo, and
-> the dropdown lists every live session. Background:
-> **[issue #8 →](https://github.com/m1ckc3s/claude-status-bar/issues/8)**
+> the dropdown lists every live session. Click a session to jump to it: desktop sessions focus
+> the Claude app, terminal sessions bring their terminal app to the front (the app, not yet the
+> exact window or tab when you have several open). Precise per-tab focus is in progress:
+> **[issue #19 →](https://github.com/m1ckc3s/claude-status-bar/issues/19)**.
+> Background: **[issue #8 →](https://github.com/m1ckc3s/claude-status-bar/issues/8)**
 
 ---
 

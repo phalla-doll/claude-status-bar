@@ -89,7 +89,10 @@ process.stdin.on("end", () => {
   // CLAUDE_CODE_ENTRYPOINT tags the surface running this session ("cli", "claude-desktop", …);
   // carried over from prev for the odd event where the env var isn't set.
   const entrypoint = process.env.CLAUDE_CODE_ENTRYPOINT || prev.entrypoint || "";
-  const out = { state, label, tool: p.tool_name || "", project, sessionId: p.session_id || "", transcript: p.transcript_path || prev.transcript || "", entrypoint, startedAt, ts };
+  // TERM_PROGRAM identifies the terminal app for a CLI session (Apple_Terminal, iTerm.app,
+  // vscode, WezTerm, …); the app uses it to bring that terminal to the front on a row click.
+  const termProgram = process.env.TERM_PROGRAM || prev.term_program || "";
+  const out = { state, label, tool: p.tool_name || "", project, sessionId: p.session_id || "", transcript: p.transcript_path || prev.transcript || "", entrypoint, term_program: termProgram, startedAt, ts };
   try {
     fs.mkdirSync(stateDir, { recursive: true });
     const tmp = statePath + "." + process.pid + ".tmp";
