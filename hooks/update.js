@@ -1,8 +1,5 @@
 #!/usr/bin/env node
-// Invoked by Claude Code hooks. Reads the hook JSON payload on stdin, maps the
-// event to a status, and atomically writes a PER-SESSION file:
-//   ~/.claude/statusbar/state.d/<session_id>.json
-// The app reads every file in state.d/ and aggregates them (see Sources/main.swift).
+// Maps a Claude Code hook event to this session's file: ~/.claude/statusbar/state.d/<session_id>.json
 // Usage: node update.js <prompt|pre|post|notify|permreq|stop>
 
 const fs = require("fs");
@@ -42,8 +39,6 @@ process.stdin.on("end", () => {
   const sid = safeId(p.session_id);
   const statePath = path.join(stateDir, sid + ".json");
 
-  // Read THIS session's prior state (not a shared global) so startedAt/transcript carry over
-  // within the session and never bleed across concurrent sessions.
   let prev = {};
   try { prev = JSON.parse(fs.readFileSync(statePath, "utf8")); } catch {}
 
@@ -56,8 +51,6 @@ process.stdin.on("end", () => {
       state = "thinking"; label = "Thinking…"; startedAt = ts; break;
     case "pre": {
       const t = p.tool_name || "";
-      // Known tools get a friendly verb; everything else (incl. long mcp__server__method
-      // names) collapses to a generic "Using tool".
       state = "tool"; label = TOOL_LABELS[t] || "Using tool";
       if (!startedAt) startedAt = ts;
       break;
@@ -69,7 +62,7 @@ process.stdin.on("end", () => {
     case "notify": {
       // Only a permission prompt drives the icon here (CLI path; desktop uses permreq). Ignore
       // every other Notification (esp. the idle_prompt "Claude is waiting for your input") so the
-      // icon rests instead of parking on a confusing "Waiting for you". See CLAUDE.md.
+      // icon rests instead of parking on a confusing "Waiting for you".
       const m = (p.message || "").toLowerCase();
       const isPerm = p.notification_type === "permission_prompt" ||
         m.includes("permission") || m.includes("approve") || m.includes("allow");
@@ -78,7 +71,7 @@ process.stdin.on("end", () => {
       break;
     }
     case "permreq":
-      // Desktop-app permission signal; not redundant with notify (that's CLI-only). See CLAUDE.md.
+      // Desktop-app permission signal; not redundant with notify (that's CLI-only).
       state = "permission"; label = "Awaiting permission"; startedAt = 0; break;
     case "stop":
       state = "done"; label = "Done"; startedAt = 0; break;

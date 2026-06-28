@@ -1,8 +1,5 @@
 #!/usr/bin/env node
-// SessionStart/SessionEnd: launch the app, and track each session as one file under
-// state.d/<session_id>.json (race-free; the app aggregates them and quits itself when none
-// remain). Rationale + history in CLAUDE.md.
-// Usage: node lifecycle.js <start|end>   (hook JSON, incl. session_id, arrives on stdin)
+// SessionStart/SessionEnd hooks. Usage: node lifecycle.js <start|end>  (hook JSON, incl. session_id, on stdin)
 
 const fs = require("fs");
 const os = require("os");
@@ -44,7 +41,7 @@ function run() {
     // crash) — clear them so the count starts honest.
     if (!running()) { try { for (const f of fs.readdirSync(stateDir)) fs.rmSync(path.join(stateDir, f), { force: true }); } catch {} }
     // Seed an idle file: counts the session immediately, and clears any frozen state from a
-    // resume (SessionStart fires on resume with no active turn). Replaces the old clearStaleState.
+    // resume (SessionStart fires on resume with no active turn).
     try {
       // started:false — a merely-opened conversation seeds this for launch + liveness but stays out of
       // the dropdown until it has real activity (update.js flips started:true on a prompt/tool).

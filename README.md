@@ -71,6 +71,9 @@ Signed and notarized.
 
 Download the latest DMG and drag it into Applications (choose **Replace**). That's it: it refreshes its own hooks the next time it starts up (on a version change it re-runs its installer automatically), so there's nothing to run by hand. Your next Claude Code session picks them up.
 
+> [!IMPORTANT]
+> **Updated mid-session?** Sessions already open won't show up until they do something (send a prompt) or you start a new `claude` session.
+
 ### Option B — Claude Code plugin
 
 Installs the hooks (status + open/close lifecycle) automatically from inside Claude Code:
@@ -86,11 +89,11 @@ The plugin installs the hooks but not the app itself, so drag **Claude Status Ba
 
 The app is stateless. Claude Code fires hooks as it works; the app polls those updates and aggregates them across every live session into a single icon, a permission dot if one needs you, animating if any session is working, resting when all are idle. It launches itself when Claude Code opens and quits when nothing's running, so there's nothing to manage.
 
-The installer merges its hooks into `~/.claude/settings.json` (backing it up first), and the app's only network call is a once-a-day GitHub release check ([details](docs/privacy.md)).
+The installer merges its hooks into `~/.claude/settings.json` (backing it up first), and the app's only network call is a once-a-day GitHub release check ([details](PRIVACY.md)).
 
 ## Troubleshooting
 
-Icon quitting right after you open it, not showing, or not moving in Cursor? See [Troubleshooting](docs/troubleshooting.md), most of it is expected behavior, not a bug.
+Icon quitting right after you open it, not showing, or not moving in Cursor? See [Troubleshooting](TROUBLESHOOTING.md), most of it is expected behavior, not a bug.
 
 ## Uninstall
 

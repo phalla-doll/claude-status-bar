@@ -15,4 +15,4 @@
 **Seeing 2 icons?** The desktop app shows its own menu bar icon (the quick-screenshot one). To avoid two icons sitting side by side, open Claude's **Settings → General** and turn that built-in menu bar item off.
 
 ---
-Back to the [README](../README.md).
+Back to the [README](README.md).
