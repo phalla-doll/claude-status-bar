@@ -212,7 +212,6 @@ final class StatusController: NSObject, NSMenuDelegate {
     // most-recent session is always kept visible (floor at one). 0 = Never. Defaults to 30 min.
     var stalePruneAge: TimeInterval { UserDefaults.standard.object(forKey: "hideIdleAfter") as? Double ?? 1800 }
 
-    // One parsed entry per live session file (state.d/<id>.json), refreshed each tick.
     struct Session {
         var id: String, state: String, label: String, project: String, transcript: String
         var entrypoint: String  // CLAUDE_CODE_ENTRYPOINT: "cli", "claude-desktop", …
@@ -310,7 +309,7 @@ final class StatusController: NSObject, NSMenuDelegate {
     }
 
     // Re-runs on first install AND on every version change, so upgrades pick up hook
-    // changes and retire old artifacts. See CLAUDE.md "ensureHooksInstalled" for why.
+    // changes and retire old artifacts.
     func ensureHooksInstalled() {
         let d = UserDefaults.standard
         let current = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? ""
@@ -372,7 +371,6 @@ final class StatusController: NSObject, NSMenuDelegate {
     let releasePageURL = "https://github.com/m1ckc3s/claude-status-bar/releases/latest"
 
     // Once/day: cache GitHub's latest release tag in UserDefaults. Nothing sent to us.
-    // See CLAUDE.md "Update check" for the privacy/behavior notes.
     func checkForUpdate() {
         let d = UserDefaults.standard
         let now = Date().timeIntervalSince1970
@@ -422,7 +420,6 @@ final class StatusController: NSObject, NSMenuDelegate {
         spinTimer?.invalidate(); spinTimer = nil
     }
 
-    // Advance the spinner and repaint only the working-state rows' leading icons.
     func spinTick() {
         spinAngle += 5   // 30fps * 5° = 150°/s ≈ 0.42 rev/s, a calm spin
         guard let img = rotatedSpinner(spinAngle) else { return }
@@ -434,8 +431,6 @@ final class StatusController: NSObject, NSMenuDelegate {
         }
     }
 
-    // Re-render the open dropdown's session rows each tick: timer text AND status icon, so a state
-    // change while the menu is open (working -> permission, working -> done) updates without a reopen.
     // The session SET only changes on reopen (NSMenu can't add/remove rows reliably mid-track).
     func refreshOpenMenuRows() {
         let now = Date().timeIntervalSince1970
@@ -565,11 +560,6 @@ final class StatusController: NSObject, NSMenuDelegate {
         return it
     }
 
-    // An option row rendered as a custom view: label + a trailing mini NSSwitch (clicking the switch
-    // toggles and keeps the menu open). `note` is optional dim text before the switch (e.g. "1m+").
-    // The row uses autoresizing springs so the switch tracks the menu's right edge when the menu
-    // stretches the view to its full width; the switch gets a non-vibrant appearance so its "on"
-    // accent fill isn't washed out by the menu's vibrancy.
     func toggleRow(title: String, isOn: Bool, onToggle: @escaping (Bool) -> Void) -> NSMenuItem {
         let width = CGFloat(uiConfig()["boxWidth"] ?? 300), height: CGFloat = 24, leftInset: CGFloat = 14, rightInset: CGFloat = 12
         let row = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
@@ -598,8 +588,6 @@ final class StatusController: NSObject, NSMenuDelegate {
         return item
     }
 
-    // One (disabled, informational) menu row per live session: "project  Status 1m2s" + a trailing
-    // CLI/APP badge (see surfaceTag); the surface is the badge, not inline text.
     func sessionMenuLine(_ s: Session) -> String {
         let now = Date().timeIntervalSince1970
         let eff = s.eff.isEmpty ? effectiveState(s, now: now) : s.eff  // cached by evaluate() each tick
@@ -612,7 +600,6 @@ final class StatusController: NSObject, NSMenuDelegate {
         return line
     }
 
-    // Same as sessionMenuLine but the trailing timer is dimmed so it reads apart from the project name.
     // Live layout knobs read fresh from ~/.claude/statusbar/uiconfig.json each render, so numeric
     // tweaks (timer column, pill offset, gap) take effect on the next menu open with NO rebuild.
     func uiConfig() -> [String: Double] {
@@ -639,7 +626,6 @@ final class StatusController: NSObject, NSMenuDelegate {
                     timerGap: CGFloat(cfg["timerGap"] ?? 10))
     }
 
-    // The state portion of a session's display, shared by the bar label and the menu/tooltip rows.
     func statusText(_ s: Session, eff: String) -> String {
         switch eff {
         case "permission":       return "Awaiting permission"
@@ -690,8 +676,6 @@ final class StatusController: NSObject, NSMenuDelegate {
         }
     }
 
-    // Leading status icon for a session row. Working states spin (progress.indicator on macOS 15+,
-    // rays below); permission is amber (mirrors the bar dot); resting states are dimmed.
     func sessionSymbol(_ s: Session, eff: String) -> NSImage? {
         switch eff {
         case "permission":       return symbolImage("exclamationmark.circle.fill", tint: amber)
@@ -860,7 +844,7 @@ final class StatusController: NSObject, NSMenuDelegate {
         let fm = FileManager.default
         let files = stateFileNames()
         let present = Set(files)
-        for key in Array(fileMTimes.keys) where !present.contains(key) {   // file gone -> drop the session
+        for key in Array(fileMTimes.keys) where !present.contains(key) {
             fileMTimes[key] = nil
             sessions[(key as NSString).deletingPathExtension] = nil
         }
@@ -868,7 +852,7 @@ final class StatusController: NSObject, NSMenuDelegate {
             let full = (stateDir as NSString).appendingPathComponent(f)
             guard let attrs = try? fm.attributesOfItem(atPath: full),
                   let m = attrs[.modificationDate] as? Date else { continue }
-            if fileMTimes[f] == m { continue }   // unchanged since last parse
+            if fileMTimes[f] == m { continue }
             fileMTimes[f] = m
             guard let data = fm.contents(atPath: full),
                   let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
@@ -877,8 +861,6 @@ final class StatusController: NSObject, NSMenuDelegate {
         }
     }
 
-    // Each tick: refresh every session's effective state and completion-chime bookkeeping, then
-    // surface a single session in the bar.
     func evaluate() {
         let now = Date().timeIntervalSince1970
         var chime = false
@@ -918,15 +900,15 @@ final class StatusController: NSObject, NSMenuDelegate {
         case "thinking", "tool":
             render(label: statusText(lead, eff: lead.eff), color: iconColor, animate: true, startedAt: lead.startedAt)
         default:
-            renderResting()   // done / idle: just the resting spark
+            renderResting()
         }
     }
 
     func renderResting() { render(label: "", color: iconColor, animate: false, startedAt: 0) }
 
-    // Per-session effective state with the same recovery the single-file model used: an absolute
-    // age cap, plus the transcript "interrupted by user" marker (Esc / denied permission fire no
-    // hook, freezing the file). "done" collapses to rest. Full rationale in CLAUDE.md.
+    // Per-session effective state with two recovery nets: an absolute age cap, plus the transcript
+    // "interrupted by user" marker (Esc / denied permission fire no hook, freezing the file). "done"
+    // collapses to rest.
     func effectiveState(_ s: Session, now: Double) -> String {
         if s.state == "thinking" || s.state == "tool" || s.state == "permission" {
             let cap: Double = s.state == "permission" ? 7200 : 900
@@ -950,7 +932,7 @@ final class StatusController: NSObject, NSMenuDelegate {
         return edge
     }
 
-    // MARK: self-quit lifecycle (rationale + warmup-churn history in CLAUDE.md)
+    // MARK: self-quit lifecycle
 
     func claudeDesktopRunning() -> Bool {
         NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == claudeDesktopBundleID }
@@ -1145,8 +1127,6 @@ final class StatusController: NSObject, NSMenuDelegate {
         let pw = CGFloat(rep?.pixelsWide ?? Int(src.size.width))
         let ph = CGFloat(rep?.pixelsHigh ?? Int(src.size.height))
         let h: CGFloat = 18, w = (ph > 0 ? h * (pw / ph) : h)
-        // Orange mode: draw the original PNG as-is (preserves black eyes on orange body).
-        // System mode: draw the pre-processed template (dark pixels → transparent holes).
         let img = NSImage(size: NSSize(width: w, height: h), flipped: false) { rect in
             src.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1.0)
             return true
