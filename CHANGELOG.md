@@ -3,6 +3,12 @@
 All notable changes to Claude Status Bar are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Session rows show the git branch** next to the project name ("myrepo · fix-auth"), read straight from `.git/HEAD` — no `git` invocation, works for worktrees, shows a short SHA when detached, shows nothing outside a repo.
+- **Same-named projects are told apart.** When two live sessions share a folder name (two clones or worktrees of one repo), rows qualify it with the parent folder: "work/myrepo" vs "tmp/myrepo". Hovering a row shows the full path.
+
 ## [0.3.3] - 2026-07-08
 
 ### Changed
