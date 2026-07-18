@@ -1,7 +1,12 @@
 #!/usr/bin/env node
-// Installs the status-bar hooks into ~/.claude/settings.json (merging, never
+// Installs the status-bar hooks into a Claude Code settings.json (merging, never
 // clobbering existing hooks) and copies update.js to ~/.claude/statusbar/.
 // Re-runnable: existing status-bar hooks are stripped before re-adding.
+//
+// Multi-account: the scripts + state.d live in the SHARED ~/.claude/statusbar hub
+// (one app reads it, sessions aggregate by UUID). Only the settings.json TARGET
+// varies — set CLAUDE_CONFIG_DIR to wire a non-default account's hooks at the same
+// shared scripts, e.g.  CLAUDE_CONFIG_DIR=$HOME/.claude-2 node install.js
 
 const fs = require("fs");
 const os = require("os");
@@ -9,11 +14,21 @@ const path = require("path");
 const cp = require("child_process");
 
 const home = os.homedir();
+// The shared hub is always the real ~/.claude — os.homedir() ignores CLAUDE_CONFIG_DIR,
+// so every account's hooks write here and the single app sees them all.
 const sbDir = path.join(home, ".claude", "statusbar");
 const MARKER = sbDir; // every hook command we add points inside this dir
 const updateDest = path.join(sbDir, "update.js");
 const lifecycleDest = path.join(sbDir, "lifecycle.js");
-const settingsPath = path.join(home, ".claude", "settings.json");
+// Which account's settings.json to wire. Defaults to the primary ~/.claude; point it at a
+// secondary account (run through `CLAUDE_CONFIG_DIR=$HOME/.claude-2 claude`) to surface that
+// account's sessions too. The scripts/state above stay shared regardless.
+// path.resolve leaves an absolute CLAUDE_CONFIG_DIR untouched and anchors a relative one at
+// $HOME (not the installer's arbitrary cwd), matching where a config dir actually lives.
+const configDir = process.env.CLAUDE_CONFIG_DIR
+  ? path.resolve(home, process.env.CLAUDE_CONFIG_DIR)
+  : path.join(home, ".claude");
+const settingsPath = path.join(configDir, "settings.json");
 const node = process.execPath;
 
 // Retire the old 0.0.2 background watcher LaunchAgent on upgrade (0.0.3+ self-quits).
@@ -69,6 +84,7 @@ addUnmatched("Stop", cmd("stop"));
 addUnmatched("SessionStart", life("start"));
 addUnmatched("SessionEnd", life("end"));
 
+fs.mkdirSync(configDir, { recursive: true });
 fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
 console.log("Installed status-bar hooks into", settingsPath);
 console.log("Scripts:", updateDest, "and", lifecycleDest);

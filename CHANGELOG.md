@@ -3,6 +3,11 @@
 All notable changes to Claude Status Bar are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Multiple Claude Code accounts.** Run a second account through `CLAUDE_CONFIG_DIR` (e.g. a `claude2` shell alias) and its sessions can now join the status bar. Wire the account once with `CLAUDE_CONFIG_DIR="$HOME/.claude-2" node .../install.js`; scripts and session state stay in the shared `~/.claude/statusbar/` hub, so a single app aggregates every account. When two or more accounts are live, each row gains an account badge next to its `CLI`/`APP` pill (`[claude-2][CLI]`) to tell otherwise-identical rows apart; with one account the UI is unchanged. Set `CLAUDE_STATUSBAR_ACCOUNT` to customise a badge label. Addresses [#41](https://github.com/m1ckc3s/claude-status-bar/issues/41).
+
 ## [0.3.4] - 2026-07-09
 
 ### Added

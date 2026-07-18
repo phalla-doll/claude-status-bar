@@ -18,5 +18,7 @@
 
 **Seeing 2 icons?** The desktop app shows its own menu bar icon (the quick-screenshot one). To avoid two icons sitting side by side, open Claude's **Settings → General** and turn that built-in menu bar item off.
 
+**A second Claude account (via `CLAUDE_CONFIG_DIR`) doesn't show up?** The app only wires hooks into the primary `~/.claude` by default, so sessions from an account like `~/.claude-2` are invisible until you wire that account too. Run the installer once with `CLAUDE_CONFIG_DIR` pointed at it: `CLAUDE_CONFIG_DIR="$HOME/.claude-2" node "/Applications/ClaudeStatusBar.app/Contents/Resources/install.js"`. See [Multiple accounts](README.md#multiple-accounts) for the full setup. Once two accounts are live, each row shows an account badge (`[claude-2][CLI]`) so you can tell otherwise-identical rows apart.
+
 ---
 Back to the [README](README.md).

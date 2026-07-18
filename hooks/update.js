@@ -19,6 +19,20 @@ const TOOL_LABELS = {
 
 const safeId = (s) => String(s || "").replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 64) || "unknown";
 
+// Which Claude Code account fired this hook. Derived from CLAUDE_CONFIG_DIR (the env var a
+// `claude2() { CLAUDE_CONFIG_DIR=$HOME/.claude-2 claude "$@"; }` alias exports), so the app can
+// tell otherwise-identical rows apart. The primary account (~/.claude or unset) reports "" —
+// keeps single-account state files byte-identical and invisible in the UI. CLAUDE_STATUSBAR_ACCOUNT
+// overrides the derived label for a nicer name.
+const accountLabel = () => {
+  const override = (process.env.CLAUDE_STATUSBAR_ACCOUNT || "").trim();
+  if (override) return override.slice(0, 32);
+  const dir = process.env.CLAUDE_CONFIG_DIR;
+  if (!dir) return "";
+  const name = path.basename(path.resolve(dir)).replace(/^\./, "");
+  return name === "claude" || name === "" ? "" : name.slice(0, 32);
+};
+
 let raw = "";
 process.stdin.on("data", (d) => (raw += d));
 process.stdin.on("end", () => {
@@ -92,7 +106,10 @@ process.stdin.on("end", () => {
   // stable for the session's life, on both CLI and desktop). The app uses kill(pid,0) for liveness.
   // started:true — any update.js event (prompt/tool/permission/stop) is real activity, so the session
   // graduates from "merely opened" to visible in the dropdown. Clicking a conversation never fires here.
-  const out = { state, label, tool: p.tool_name || "", project, cwd, sessionId: p.session_id || "", transcript: p.transcript_path || prev.transcript || "", entrypoint, term_program: termProgram, pid: process.ppid, started: true, startedAt, ts };
+  // account carried over from prev for the odd event with no env (should not happen — the alias
+  // exports CLAUDE_CONFIG_DIR for the whole session — but keeps the label stable if it did).
+  const account = accountLabel() || prev.account || "";
+  const out = { state, label, tool: p.tool_name || "", project, cwd, sessionId: p.session_id || "", transcript: p.transcript_path || prev.transcript || "", entrypoint, term_program: termProgram, account, pid: process.ppid, started: true, startedAt, ts };
   try {
     fs.mkdirSync(stateDir, { recursive: true });
     const tmp = statePath + "." + process.pid + ".tmp";

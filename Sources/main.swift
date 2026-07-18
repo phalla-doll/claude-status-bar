@@ -269,6 +269,7 @@ final class StatusController: NSObject, NSMenuDelegate {
         var cwd: String         // session working directory; "" on pre-upgrade files
         var entrypoint: String  // CLAUDE_CODE_ENTRYPOINT: "cli", "claude-desktop", …
         var termProgram: String // TERM_PROGRAM for CLI sessions: "Apple_Terminal", "iTerm.app", …
+        var account: String     // Claude Code account (from CLAUDE_CONFIG_DIR); "" = primary/default account
         var pid: Int32          // the session's `claude` process; kill(pid,0) drives liveness. 0 = pre-upgrade file.
         var started: Bool       // true once the session had real activity (a prompt/tool); a merely-opened
                                 // conversation seeds started=false and stays out of the dropdown.
@@ -286,6 +287,7 @@ final class StatusController: NSObject, NSMenuDelegate {
             self.cwd = o["cwd"] as? String ?? ""
             self.entrypoint = o["entrypoint"] as? String ?? ""
             self.termProgram = o["term_program"] as? String ?? ""
+            self.account = o["account"] as? String ?? ""
             self.pid = Int32(truncatingIfNeeded: (o["pid"] as? NSNumber)?.intValue ?? 0)
             self.started = o["started"] as? Bool ?? false
             self.startedAt = (o["startedAt"] as? NSNumber)?.doubleValue ?? 0
@@ -297,6 +299,7 @@ final class StatusController: NSObject, NSMenuDelegate {
     var gitHeadCache: [String: String] = [:]  // cwd -> resolved HEAD path ("" = confirmed non-git)
     var prevState: [String: String] = [:]  // id -> previous raw state per session
     var menuIsOpen = false                  // refresh the dropdown's per-session timers only while open
+    var multiAccount = false                // true when >=2 distinct accounts are visible; gates the account pill
     var sessionMenuItems: [(item: NSMenuItem, id: String)] = []
     var activeBase = ""        // label without the elapsed clock
     var startedAt: Double = 0  // unix seconds the current turn began (0 = no clock)
@@ -538,6 +541,10 @@ final class StatusController: NSObject, NSMenuDelegate {
         }
         if visible.isEmpty, let lead = ordered.first { visible = [lead] }   // floor: never empty while alive
 
+        // Only distinguish accounts when two or more are actually on screen — a lone account (the common
+        // case) shows no account pill, so single-account users see the exact same rows as before.
+        multiAccount = Set(visible.map { $0.account }).count >= 2
+
         if !visible.isEmpty {
             menu.addItem(header("Sessions"))
             for s in visible {
@@ -685,15 +692,15 @@ final class StatusController: NSObject, NSMenuDelegate {
         let nameMax = Int(cfg["nameMax"] ?? 30)
         let working = (eff == "thinking" || eff == "tool") && s.startedAt > 0
         let resting = !(eff == "permission" || eff == "thinking" || eff == "tool")  // the dim caret
-        let tag = surfaceTag(s.entrypoint)
+        let segs = pillSegments(s)
         v.configure(icon: sessionSymbol(s, eff: eff),
                     iconTint: resting ? .tertiaryLabelColor : .labelColor,  // caret dim; spinner matches the name font; amber image ignores tint
                     spinning: (eff == "thinking" || eff == "tool"),
                     name: truncated(sessionName(s), max: nameMax, keep: nameMax),
                     branch: truncated(s.branch, max: 22, keep: 20),
                     timer: working ? elapsed(max(0, Int(now - s.startedAt))) : nil,
-                    pillNormal: tag.isEmpty ? nil : pillImage(tag),
-                    pillSelected: tag.isEmpty ? nil : pillImage(tag, selected: true),
+                    pillNormal: segs.isEmpty ? nil : pillImage(segments: segs),
+                    pillSelected: segs.isEmpty ? nil : pillImage(segments: segs, selected: true),
                     pillInset: CGFloat(cfg["pillInset"] ?? 12),
                     timerGap: CGFloat(cfg["timerGap"] ?? 10))
         // Truncated rows stay inspectable: full name, branch, and path on hover.
@@ -730,11 +737,12 @@ final class StatusController: NSObject, NSMenuDelegate {
     }
 
     // CLI/APP pill rendered as an image so it can sit inside the row text (right after the timer)
-    // rather than as a system badge pinned to the menu edge with a fixed, uncloseable gap.
-    func pillImage(_ text: String, selected: Bool = false) -> NSImage {
-        let t = text as NSString
+    // rather than as a system badge pinned to the menu edge with a fixed, uncloseable gap. One or more
+    // segments are laid out left-to-right as a single image (e.g. [account][CLI] when multiple accounts
+    // are live), so the row's existing right-anchored pill slot handles it with no extra layout math.
+    func pillImage(segments: [String], selected: Bool = false) -> NSImage {
         let font = NSFont.monospacedSystemFont(ofSize: 9.5, weight: .semibold)  // mono -> 3 chars = uniform width
-        let pad: CGFloat = 7, h: CGFloat = 15
+        let pad: CGFloat = 7, h: CGFloat = 15, gap: CGFloat = 3
         let cfg = uiConfig()
         let dy = CGFloat(cfg["pillTextY"] ?? -1)  // negative nudges the text down (it reads top-heavy)
         // Pill bg is a tunable gray per mode (black-on-light / white-on-dark at a low alpha) so light
@@ -744,15 +752,32 @@ final class StatusController: NSObject, NSMenuDelegate {
         let bg = selected ? NSColor.white.withAlphaComponent(0.22)
                           : (dark ? NSColor.white : NSColor.black).withAlphaComponent(bgAlpha)
         let fg = selected ? NSColor.white : NSColor.labelColor
-        let w = ceil(t.size(withAttributes: [.font: font]).width) + pad * 2
-        return NSImage(size: NSSize(width: w, height: h), flipped: false) { rect in
-            bg.setFill()
-            NSBezierPath(roundedRect: rect, xRadius: h / 2, yRadius: h / 2).fill()
-            let a: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: fg]
-            let ts = t.size(withAttributes: a)
-            t.draw(at: NSPoint(x: (rect.width - ts.width) / 2, y: (rect.height - ts.height) / 2 + dy), withAttributes: a)
+        let a: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: fg]
+        let widths = segments.map { ceil(($0 as NSString).size(withAttributes: a).width) + pad * 2 }
+        let totalW = widths.reduce(0, +) + gap * CGFloat(max(0, segments.count - 1))
+        return NSImage(size: NSSize(width: totalW, height: h), flipped: false) { _ in
+            var x: CGFloat = 0
+            for (i, seg) in segments.enumerated() {
+                let segRect = NSRect(x: x, y: 0, width: widths[i], height: h)
+                bg.setFill()
+                NSBezierPath(roundedRect: segRect, xRadius: h / 2, yRadius: h / 2).fill()
+                let t = seg as NSString
+                let ts = t.size(withAttributes: a)
+                t.draw(at: NSPoint(x: segRect.minX + (segRect.width - ts.width) / 2,
+                                   y: (h - ts.height) / 2 + dy), withAttributes: a)
+                x += widths[i] + gap
+            }
             return true
         }
+    }
+
+    // The pill segments for a row: the surface (CLI/APP), prefixed by the account when >1 account is
+    // live. Single-account (the common case) returns just [surface] — identical to before.
+    func pillSegments(_ s: Session) -> [String] {
+        let surface = surfaceTag(s.entrypoint)
+        guard multiAccount else { return surface.isEmpty ? [] : [surface] }
+        let acct = truncated(s.account.isEmpty ? "default" : s.account, max: 10, keep: 9)
+        return surface.isEmpty ? [acct] : [acct, surface]
     }
 
     func sessionSymbol(_ s: Session, eff: String) -> NSImage? {

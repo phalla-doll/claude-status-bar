@@ -72,6 +72,23 @@ The app is stateless. Claude Code fires hooks as it works; the app polls those u
 
 The installer merges its hooks into `~/.claude/settings.json` (backing it up first), and the app's only network call is a once-a-day GitHub release check ([details](PRIVACY.md)).
 
+## Multiple accounts
+
+Run a second Claude Code account through `CLAUDE_CONFIG_DIR` (a common setup)?
+
+```sh
+# ~/.zshrc
+claude2() { CLAUDE_CONFIG_DIR="$HOME/.claude-2" claude "$@"; }
+```
+
+By default the app only wires hooks into the primary `~/.claude`, so `claude2` sessions never show up. Wire the second account once — pointing `CLAUDE_CONFIG_DIR` at it — and its sessions join the same status bar:
+
+```bash
+CLAUDE_CONFIG_DIR="$HOME/.claude-2" node "/Applications/ClaudeStatusBar.app/Contents/Resources/install.js"
+```
+
+That's it. The scripts and session state stay in the shared `~/.claude/statusbar/` hub, so a single app still shows everything. When two or more accounts are live, each row gets an account badge next to its `CLI`/`APP` pill (`[claude-2][CLI]`); with one account the rows look exactly as before. The badge defaults to the config dir's name — set `CLAUDE_STATUSBAR_ACCOUNT` in that account's shell to label it something friendlier.
+
 ## Troubleshooting
 
 Icon quitting right after you open it, not showing, or not moving in Cursor? See [Troubleshooting](TROUBLESHOOTING.md), most of it is expected behavior, not a bug.
@@ -81,7 +98,11 @@ Icon quitting right after you open it, not showing, or not moving in Cursor? See
 ```bash
 node "/Applications/ClaudeStatusBar.app/Contents/Resources/uninstall.js"   # removes only our hooks
 ```
-Then drag the app to the Trash.
+Then drag the app to the Trash. Wired up a [second account](#multiple-accounts)? Clean it the same way, pointing at its config dir:
+
+```bash
+CLAUDE_CONFIG_DIR="$HOME/.claude-2" node "/Applications/ClaudeStatusBar.app/Contents/Resources/uninstall.js"
+```
 
 ## Acknowledgements
 
