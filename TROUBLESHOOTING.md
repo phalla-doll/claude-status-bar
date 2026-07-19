@@ -13,12 +13,12 @@
 **The icon doesn't appear at all?**
 - Make sure a Claude session is actually running. Start a new session (or restart Claude Code) and the bar appears automatically.
 - A session that was already running *before* you installed gets picked up once it does something, but starting a fresh session is the reliable way to bring the bar up the first time.
-- Confirm it's running with `pgrep -x ClaudeStatusBar`: a number means it's running (it may just be hidden), no output means it exited because no Claude session is active.
-- If first-launch setup never took, run the installer manually: `node "/Applications/ClaudeStatusBar.app/Contents/Resources/install.js"`
+- Confirm it's running with `pgrep -x "Claude Status Bar"`: a number means it's running (it may just be hidden), no output means it exited because no Claude session is active.
+- If first-launch setup never took, run the installer manually: `node "/Applications/Claude Status Bar.app/Contents/Resources/install.js"`
 
 **Seeing 2 icons?** The desktop app shows its own menu bar icon (the quick-screenshot one). To avoid two icons sitting side by side, open Claude's **Settings → General** and turn that built-in menu bar item off.
 
-**A second Claude account (via `CLAUDE_CONFIG_DIR`) doesn't show up?** The app only wires hooks into the primary `~/.claude` by default, so sessions from an account like `~/.claude-2` are invisible until you wire that account too. Run the installer once with `CLAUDE_CONFIG_DIR` pointed at it: `CLAUDE_CONFIG_DIR="$HOME/.claude-2" node "/Applications/ClaudeStatusBar.app/Contents/Resources/install.js"`. See [Multiple accounts](README.md#multiple-accounts) for the full setup. Once two accounts are live, each row shows an account badge (`[claude-2][CLI]`) so you can tell otherwise-identical rows apart.
+**A second Claude account (via `CLAUDE_CONFIG_DIR`) doesn't show up?** The app only wires hooks into the primary `~/.claude` by default, so sessions from an account like `~/.claude-2` are invisible until you wire that account too. Run the installer once with `CLAUDE_CONFIG_DIR` pointed at it: `CLAUDE_CONFIG_DIR="$HOME/.claude-2" node "/Applications/Claude Status Bar.app/Contents/Resources/install.js"`. See [Multiple accounts](README.md#multiple-accounts) for the full setup. Once two accounts are live, each row shows an account badge (`[claude-2][CLI]`) so you can tell otherwise-identical rows apart.
 
 ---
 Back to the [README](README.md).

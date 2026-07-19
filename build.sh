@@ -1,10 +1,10 @@
 #!/bin/bash
-# Builds ClaudeStatusBar.app (and optionally a .dmg with: ./build.sh --dmg).
+# Builds Claude Status Bar.app (and optionally a .dmg with: ./build.sh --dmg).
 set -euo pipefail
 cd "$(dirname "$0")"
 
-APP="build/ClaudeStatusBar.app"
-BIN="$APP/Contents/MacOS/ClaudeStatusBar"
+APP="build/Claude Status Bar.app"
+BIN="$APP/Contents/MacOS/Claude Status Bar"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
@@ -24,10 +24,10 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>ClaudeStatusBar</string>
+  <key>CFBundleName</key><string>Claude Status Bar</string>
   <key>CFBundleDisplayName</key><string>Claude Status Bar</string>
   <key>CFBundleIdentifier</key><string>com.local.claudestatusbar</string>
-  <key>CFBundleExecutable</key><string>ClaudeStatusBar</string>
+  <key>CFBundleExecutable</key><string>Claude Status Bar</string>
   <key>CFBundleVersion</key><string>0.3.4</string>
   <key>CFBundleShortVersionString</key><string>0.3.4</string>
   <key>CFBundlePackageType</key><string>APPL</string>
@@ -88,7 +88,7 @@ if [[ "${1:-}" == "--dmg" ]]; then
   fi
 
   echo "Packaging DMG…"
-  DMG="build/ClaudeStatusBar.dmg"
+  DMG="build/Claude Status Bar.dmg"
   STAGE="build/dmg-stage"
   rm -rf "$STAGE" "$DMG" build/rw.dmg
   mkdir -p "$STAGE"
@@ -117,7 +117,7 @@ tell application "Finder"
     set arrangement of vo to not arranged
     set icon size of vo to 100
     set text size of vo to 12
-    set position of item "ClaudeStatusBar.app" of container window to {130, 150}
+    set position of item "Claude Status Bar.app" of container window to {130, 150}
     set position of item "Applications" of container window to {350, 150}
     update without registering applications
     delay 1

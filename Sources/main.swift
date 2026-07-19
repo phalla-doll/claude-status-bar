@@ -398,7 +398,7 @@ final class StatusController: NSObject, NSMenuDelegate {
               let installer = Bundle.main.path(forResource: "install", ofType: "js") else { return }
         DispatchQueue.global().async {
             guard let node = Self.locateNode() else {
-                NSLog("ClaudeStatusBar: could not find node; hooks not installed (will retry next launch)")
+                NSLog("Claude Status Bar: could not find node; hooks not installed (will retry next launch)")
                 return
             }
             let task = Process()
@@ -458,7 +458,7 @@ final class StatusController: NSObject, NSMenuDelegate {
         if now - d.double(forKey: "lastUpdateCheck") < 86400 { return }
         guard let url = URL(string: releaseAPIURL) else { return }
         var req = URLRequest(url: url)
-        req.setValue("ClaudeStatusBar", forHTTPHeaderField: "User-Agent") // GitHub API requires a UA
+        req.setValue("Claude Status Bar", forHTTPHeaderField: "User-Agent") // GitHub API requires a UA
         URLSession.shared.dataTask(with: req) { data, _, _ in
             guard let data = data,
                   let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

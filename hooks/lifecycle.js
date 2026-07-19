@@ -7,14 +7,14 @@ const path = require("path");
 const cp = require("child_process");
 
 const BUNDLE_ID = "com.local.claudestatusbar";
-const EXEC = "ClaudeStatusBar";
+const EXEC = "Claude Status Bar";
 const dir = path.join(os.homedir(), ".claude", "statusbar");
 const stateDir = path.join(dir, "state.d");
 const event = process.argv[2];
 
 fs.mkdirSync(stateDir, { recursive: true });
 
-const running = () => { try { cp.execSync(`pgrep -x ${EXEC}`, { stdio: "ignore" }); return true; } catch { return false; } };
+const running = () => { try { cp.execSync(`pgrep -x "${EXEC}"`, { stdio: "ignore" }); return true; } catch { return false; } };
 const safeId = (s) => String(s || "").replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 64) || "unknown";
 
 // Account label for this session (see update.js for the full rationale). Primary account -> "".

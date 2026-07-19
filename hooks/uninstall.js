@@ -22,7 +22,7 @@ const AGENT_LABEL = "com.local.claudestatusbar.watcher";
 const agentPlist = path.join(home, "Library", "LaunchAgents", AGENT_LABEL + ".plist");
 try { cp.execSync(`launchctl bootout gui/${process.getuid()}/${AGENT_LABEL}`, { stdio: "ignore" }); } catch {}
 if (fs.existsSync(agentPlist)) { fs.rmSync(agentPlist); console.log("Removed desktop watcher LaunchAgent."); }
-try { cp.execSync("pkill -x ClaudeStatusBar", { stdio: "ignore" }); } catch {}
+try { cp.execSync("pkill -x \"Claude Status Bar\"", { stdio: "ignore" }); } catch {}
 
 if (!fs.existsSync(settingsPath)) { console.log("No settings.json; nothing to do."); process.exit(0); }
 

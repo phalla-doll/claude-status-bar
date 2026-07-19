@@ -1,4 +1,4 @@
-<a href="https://github.com/m1ckc3s/claude-status-bar/releases/latest/download/ClaudeStatusBar.dmg"><img src="assets/download.png" alt="Download ClaudeStatusBar.dmg for macOS" width="220"></a>
+<a href="https://github.com/m1ckc3s/claude-status-bar/releases/latest/download/Claude%20Status%20Bar.dmg"><img src="assets/download.png" alt="Download Claude Status Bar.dmg for macOS" width="220"></a>
 <br>
 **Signed and notarized by Apple**
 ## Claude Status Bar
@@ -46,7 +46,7 @@ Everything is controlled from the menu:
 
 Signed and notarized.
 
-1. Download the latest `ClaudeStatusBar.dmg` from [Releases](../../releases).
+1. Download the latest `Claude Status Bar.dmg` from [Releases](../../releases).
 2. Open it and drag **Claude Status Bar** into Applications.
 3. Launch it once. On first launch it wires up the Claude Code hooks for you automatically.
 4. Start a new Claude Code session, the icon appears whenever Claude Code is running.
@@ -84,7 +84,7 @@ claude2() { CLAUDE_CONFIG_DIR="$HOME/.claude-2" claude "$@"; }
 By default the app only wires hooks into the primary `~/.claude`, so `claude2` sessions never show up. Wire the second account once — pointing `CLAUDE_CONFIG_DIR` at it — and its sessions join the same status bar:
 
 ```bash
-CLAUDE_CONFIG_DIR="$HOME/.claude-2" node "/Applications/ClaudeStatusBar.app/Contents/Resources/install.js"
+CLAUDE_CONFIG_DIR="$HOME/.claude-2" node "/Applications/Claude Status Bar.app/Contents/Resources/install.js"
 ```
 
 That's it. The scripts and session state stay in the shared `~/.claude/statusbar/` hub, so a single app still shows everything. When two or more accounts are live, each row gets an account badge next to its `CLI`/`APP` pill (`[claude-2][CLI]`); with one account the rows look exactly as before. The badge defaults to the config dir's name — set `CLAUDE_STATUSBAR_ACCOUNT` in that account's shell to label it something friendlier.
@@ -96,12 +96,12 @@ Icon quitting right after you open it, not showing, or not moving in Cursor? See
 ## Uninstall
 
 ```bash
-node "/Applications/ClaudeStatusBar.app/Contents/Resources/uninstall.js"   # removes only our hooks
+node "/Applications/Claude Status Bar.app/Contents/Resources/uninstall.js"   # removes only our hooks
 ```
 Then drag the app to the Trash. Wired up a [second account](#multiple-accounts)? Clean it the same way, pointing at its config dir:
 
 ```bash
-CLAUDE_CONFIG_DIR="$HOME/.claude-2" node "/Applications/ClaudeStatusBar.app/Contents/Resources/uninstall.js"
+CLAUDE_CONFIG_DIR="$HOME/.claude-2" node "/Applications/Claude Status Bar.app/Contents/Resources/uninstall.js"
 ```
 
 ## Acknowledgements
