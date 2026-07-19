@@ -7,15 +7,22 @@ const cp = require("child_process");
 
 const home = os.homedir();
 // Match the dir, not "update.js": the narrower marker used to orphan the lifecycle hooks.
+// The hub is shared across accounts, so the marker is always the real ~/.claude/statusbar.
 const MARKER = path.join(home, ".claude", "statusbar");
-const settingsPath = path.join(home, ".claude", "settings.json");
+// Remove hooks from the primary ~/.claude by default; pass CLAUDE_CONFIG_DIR to clean a
+// secondary account's settings.json (mirrors install.js). Only the target varies.
+// Relative CLAUDE_CONFIG_DIR anchors at $HOME (mirrors install.js), absolute is left as-is.
+const configDir = process.env.CLAUDE_CONFIG_DIR
+  ? path.resolve(home, process.env.CLAUDE_CONFIG_DIR)
+  : path.join(home, ".claude");
+const settingsPath = path.join(configDir, "settings.json");
 
 // Tear down the desktop watcher LaunchAgent (best-effort; safe if absent).
 const AGENT_LABEL = "com.local.claudestatusbar.watcher";
 const agentPlist = path.join(home, "Library", "LaunchAgents", AGENT_LABEL + ".plist");
 try { cp.execSync(`launchctl bootout gui/${process.getuid()}/${AGENT_LABEL}`, { stdio: "ignore" }); } catch {}
 if (fs.existsSync(agentPlist)) { fs.rmSync(agentPlist); console.log("Removed desktop watcher LaunchAgent."); }
-try { cp.execSync("pkill -x ClaudeStatusBar", { stdio: "ignore" }); } catch {}
+try { cp.execSync("pkill -x \"Claude Status Bar\"", { stdio: "ignore" }); } catch {}
 
 if (!fs.existsSync(settingsPath)) { console.log("No settings.json; nothing to do."); process.exit(0); }
 
