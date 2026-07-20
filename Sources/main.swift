@@ -454,8 +454,10 @@ final class StatusController: NSObject, NSMenuDelegate {
     // MARK: update check
 
     var currentVersion: String { (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0" }
-    let releaseAPIURL = "https://api.github.com/repos/m1ckc3s/claude-status-bar/releases/latest"
-    let releasePageURL = "https://github.com/m1ckc3s/claude-status-bar/releases/latest"
+    // Personal fork: check our own releases, not upstream's — an upstream "Update available"
+    // would offer a build without this fork's features. No releases on the fork = no nag.
+    let releaseAPIURL = "https://api.github.com/repos/phalla-doll/claude-status-bar/releases/latest"
+    let releasePageURL = "https://github.com/phalla-doll/claude-status-bar/releases/latest"
 
     // Once/day: cache GitHub's latest release tag in UserDefaults. Nothing sent to us.
     func checkForUpdate() {
