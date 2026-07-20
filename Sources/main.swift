@@ -355,7 +355,12 @@ final class StatusController: NSObject, NSMenuDelegate {
     // Template frames: bright pixels (white eyes) become transparent holes so they're
     // visible as negative space against the menu bar in System color mode.
     lazy var crabTemplateFrames: [NSImage] = crabFrames.map { adaptiveCrabFrame($0) }
+    let waveFPS: Double = 4 // slow "hey, over here" wag, not the walk's scurry
+    lazy var waveFrames: [NSImage] = crabFrames.first.map(wavingCrabFrames(from:)) ?? []
+    lazy var waveTemplateFrames: [NSImage] = waveFrames.map { adaptiveCrabFrame($0) }
+    var waving = false // crab style, permission state: claw-wave cycle instead of the walk
     var fps: Double {
+        if waving { return waveFPS }
         switch animStyle {
         case .web: return spriteFPS
         case .code: return Double(codeGlyphs.count * codeSub) / codeCycle
@@ -363,6 +368,7 @@ final class StatusController: NSObject, NSMenuDelegate {
         }
     }
     var frameCount: Int {
+        if waving { return max(1, waveFrames.count) }
         switch animStyle {
         case .web: return max(1, frames.count)
         case .code: return codeGlyphs.count * codeSub
@@ -1049,7 +1055,12 @@ final class StatusController: NSObject, NSMenuDelegate {
         guard let lead = lead else { renderResting(); return }
         switch lead.eff {
         case "permission":
-            render(label: statusText(lead, eff: lead.eff), color: amber, animate: false, startedAt: 0, dot: true)
+            if animStyle == .crab, !waveFrames.isEmpty {
+                // The crab waves for attention instead of being replaced by the amber dot.
+                render(label: statusText(lead, eff: lead.eff), color: iconColor, animate: true, startedAt: 0, wave: true)
+            } else {
+                render(label: statusText(lead, eff: lead.eff), color: amber, animate: false, startedAt: 0, dot: true)
+            }
         case "thinking", "tool":
             render(label: statusText(lead, eff: lead.eff), color: iconColor, animate: true, startedAt: lead.startedAt)
         default:
@@ -1133,13 +1144,18 @@ final class StatusController: NSObject, NSMenuDelegate {
 
     // MARK: render
 
-    func render(label: String, color: NSColor?, animate: Bool, startedAt: Double, dot: Bool = false) {
+    func render(label: String, color: NSColor?, animate: Bool, startedAt: Double, dot: Bool = false, wave: Bool = false) {
         guard let button = statusItem.button else { return }
         button.contentTintColor = nil // we paint the icon color ourselves; template-tint is unreliable
         activeBase = label
         activeColor = color
         self.startedAt = startedAt
 
+        if wave != waving { // wave and walk run at different fps; rebuild the timer
+            waving = wave
+            animTimer?.invalidate(); animTimer = nil
+            frameIdx = 0
+        }
         if animate {
             if animTimer == nil {
                 let t = Timer(timeInterval: 1.0 / fps, repeats: true) { [weak self] _ in self?.animStep() }
@@ -1190,6 +1206,7 @@ final class StatusController: NSObject, NSMenuDelegate {
     }
 
     func iconImage(color: NSColor?, frame: Int) -> NSImage {
+        if waving { return crabIcon(color: color, frame: frame, wave: true) }
         if animStyle == .web { return tint(frames, color: color, frame: frame) }
         if animStyle == .crab { return crabIcon(color: color, frame: frame) }
         let i = (frame / codeSub) % codeGlyphs.count
@@ -1261,9 +1278,11 @@ final class StatusController: NSObject, NSMenuDelegate {
 
     // nil color (System) => adaptive shaded template (see adaptiveCrabFrame in CrabRender.swift);
     // non-nil (Orange) => the original full-color sprite, drawn as-is.
-    func crabIcon(color: NSColor?, frame: Int) -> NSImage {
+    func crabIcon(color: NSColor?, frame: Int, wave: Bool = false) -> NSImage {
         guard !crabFrames.isEmpty else { return NSImage(size: NSSize(width: 18, height: 18)) }
-        let pool = color == nil ? crabTemplateFrames : crabFrames
+        let pool = wave && !waveFrames.isEmpty
+            ? (color == nil ? waveTemplateFrames : waveFrames)
+            : (color == nil ? crabTemplateFrames : crabFrames)
         let src = pool[frame % pool.count]
         let rep = src.representations.first
         let pw = CGFloat(rep?.pixelsWide ?? Int(src.size.width))
