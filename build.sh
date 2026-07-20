@@ -62,7 +62,8 @@ SIGN_ID="$(security find-identity -v -p codesigning 2>/dev/null \
 
 # Strip extended attributes (Finder info, quarantine, etc.) that bundled resources can
 # carry — codesign rejects them ("resource fork, Finder information, ... not allowed").
-xattr -cr "$APP"
+# Per-file via find: macOS 26 removed xattr's -r flag.
+find "$APP" -exec xattr -c {} +
 
 if [[ -n "$SIGN_ID" ]]; then
   echo "Signing with Developer ID: $SIGN_ID"
