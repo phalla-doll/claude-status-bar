@@ -13,6 +13,8 @@ body:
         - This issue hasn't already been reported by searching [existing issues](https://github.com/m1ckc3s/claude-status-bar/issues)
         - This is a bug, not a feature request or support question
 
+        Are you having trouble with brew? See the [Homebrew guide](https://github.com/m1ckc3s/claude-status-bar/blob/main/HOMEBREW.md).
+
   - type: checkboxes
     id: preflight
     attributes:
@@ -21,9 +23,11 @@ body:
       options:
         - label: I have searched [existing issues](https://github.com/m1ckc3s/claude-status-bar/issues) and [known issues](https://github.com/m1ckc3s/claude-status-bar/issues/22) and this hasn't been reported yet
           required: true
+        - label: I have checked the [Troubleshooting guide](https://github.com/m1ckc3s/claude-status-bar/blob/main/TROUBLESHOOTING.md) and my issue isn't covered there
+          required: true
         - label: This is a single bug report (please file separate reports for different bugs)
           required: true
-        - label: I am using the latest version of Claude Status Bar
+        - label: I have Node.js installed (`node -v` prints a version)
           required: true
 
   - type: textarea
@@ -53,6 +57,26 @@ body:
         2. Start a Claude session and write a prompt
         3. The menu bar icon shows
         4. The icon disappears while the terminal is still active
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: Shown at the bottom of the menu bar dropdown (e.g. Version 0.4.0)
+      placeholder: e.g. 0.4.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How did you install it?
+      options:
+        - Homebrew (brew install)
+        - DMG (downloaded from Releases)
+        - Not sure
     validations:
       required: true
 

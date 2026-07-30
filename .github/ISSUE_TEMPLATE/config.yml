@@ -6,6 +6,6 @@ contact_links:
   - name: 🔧 Troubleshooting Guide
     url: https://github.com/m1ckc3s/claude-status-bar/blob/main/TROUBLESHOOTING.md
     about: Common issues and how to fix them
-  - name: 🍴 Power users
-    url: https://techgaun.github.io/active-forks/index.html#m1ckc3s/claude-status-bar
-    about: Check out community forks for usage tracking, widgets, Codex, Linux, and more.
+  - name: 🍺 Homebrew guide
+    url: https://github.com/m1ckc3s/claude-status-bar/blob/main/HOMEBREW.md
+    about: Are you having trouble with brew? Install, update, and transition details.
