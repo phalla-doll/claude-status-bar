@@ -9,6 +9,33 @@ All notable changes to Claude Status Bar are documented here. This project follo
 - **The crab waves for permission.** With the Crab Walking style, a session awaiting your approval now shows the crab stopping and waving its claw (a slow 4-frame wag) instead of being replaced by the amber dot. The wave frames are generated at runtime from the standing sprite — claw drawn in the crab's own pixel style — and follow both color modes, including the shaded monochrome System template. The other animation styles keep the amber dot.
 - **Multiple Claude Code accounts.** Run a second account through `CLAUDE_CONFIG_DIR` (e.g. a `claude2` shell alias) and its sessions can now join the status bar. Wire the account once with `CLAUDE_CONFIG_DIR="$HOME/.claude-2" node .../install.js`; scripts and session state stay in the shared `~/.claude/statusbar/` hub, so a single app aggregates every account. When two or more accounts are live, each row gains an account badge next to its `CLI`/`APP` pill (`[claude-2][CLI]`) to tell otherwise-identical rows apart; with one account the UI is unchanged. Set `CLAUDE_STATUSBAR_ACCOUNT` to customise a badge label. Addresses [#41](https://github.com/m1ckc3s/claude-status-bar/issues/41).
 
+### Changed
+- Synced with upstream 0.4.2 (Homebrew support, brew-aware updater, completion sound, install-mid-session self-heal, and the Homebrew-Node hook-path fix). The bundle folder stays `Claude Status Bar.app`, but the **executable** reverts to `ClaudeStatusBar` to match upstream — the relaunch hook `pgrep`s that exact name, so keeping the fork's spaced executable name would have broken the 0.4.1 self-heal.
+
+## [0.4.2] - 2026-07-29
+
+### Fixed
+- **Hooks no longer break when Homebrew upgrades Node.** The installer used to write the exact Node binary path into the hook commands, which for Homebrew-installed Node includes the version number, so the next `brew upgrade node` left every hook pointing at a deleted directory: no status, no icon, and no self-heal (that lives in the hooks too). Hook commands now resolve `node` at run time through stable locations instead. If your icon silently died at some point and never came back, this was probably you: install this update and launch the app once. Found, diagnosed, and fixed by [@pedrol2b](https://github.com/pedrol2b) ([#48](https://github.com/m1ckc3s/claude-status-bar/pull/48)), who also contributed the repo's first automated test suite.
+
+
+## [0.4.1] - 2026-07-22
+
+### Fixed
+- **Installing while a Claude Code session is already open no longer looks broken.** The app still quits a few seconds after the first launch (nothing to show yet), but now the hooks relaunch it the moment any session does anything, including sessions that were open before you installed. Previously the icon stayed gone until you started a brand-new session. Thanks to [@Bardin08](https://github.com/Bardin08) for the model bug report and root-cause analysis ([#44](https://github.com/m1ckc3s/claude-status-bar/issues/44)).
+- Quit still means quit: quitting from the menu suppresses the relaunch until your next new Claude Code session (or you open the app yourself).
+
+## [0.4.0] - 2026-07-22
+
+### Added
+- **Homebrew!** Install (or switch over from an existing DMG install) with `brew install --cask claude-status-bar && open -a "Claude Status Bar"`. The launch at the end is required: it installs the Claude Code hooks, and on a switch-over it also removes your old copy. See [HOMEBREW.md](HOMEBREW.md) for the full story.
+- **The update line in the menu is now brew-aware.** Installed via brew: "Update via brew" appears with a copy button (click, paste in your terminal) and only once Homebrew can actually deliver the new version (the cask lags a release by up to a day). Installed via DMG: "Update available" opens the releases page as before, plus a "Switch to Homebrew" copy button.
+- **Completion sound is back**, now as a Completion Sound menu with a length threshold (Off / 1 min+ / 5 min+ / 15 min+) instead of a single on/off toggle. It chimes when a turn that ran at least the chosen length finishes, per session, and is off by default.
+
+### Changed
+- **The app bundle is renamed to "Claude Status Bar.app"** (was `ClaudeStatusBar.app`), matching the app's name and its Homebrew cask token. One-time transition: on first launch the app removes the old-named copy from /Applications (after verifying by bundle identifier that it really is this app), so updating over the rename never leaves two copies. Scripts pointing at the old path need the new, quoted path.
+- The dropdown timer is now the same size as the session name and sits on its baseline, so it reads as part of the row instead of floating slightly high.
+- The working spinner in the dropdown is a touch smaller.
+
 ## [0.3.4] - 2026-07-09
 
 ### Added
@@ -133,6 +160,8 @@ All notable changes to Claude Status Bar are documented here. This project follo
 - Signed and notarized DMG so it opens without a Gatekeeper warning.
 - Claude Code plugin marketplace manifest for the plugin install path.
 
+[0.4.2]: https://github.com/m1ckc3s/claude-status-bar/releases/tag/v0.4.2
+[0.4.0]: https://github.com/m1ckc3s/claude-status-bar/releases/tag/v0.4.0
 [0.3.4]: https://github.com/m1ckc3s/claude-status-bar/releases/tag/v0.3.4
 [0.3.3]: https://github.com/m1ckc3s/claude-status-bar/releases/tag/v0.3.3
 [0.3.2]: https://github.com/m1ckc3s/claude-status-bar/releases/tag/v0.3.2

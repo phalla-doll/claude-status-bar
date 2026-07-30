@@ -3,8 +3,12 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# 0.4.0: the bundle folder is "Claude Status Bar.app" (matches the cask token claude-status-bar,
+# promised in homebrew-cask PR #274337). The EXECUTABLE stays "ClaudeStatusBar": lifecycle.js
+# pgreps that name and opens by bundle id, and every pkill/dev instruction relies on it, so only
+# the folder name changes.
 APP="build/Claude Status Bar.app"
-BIN="$APP/Contents/MacOS/Claude Status Bar"
+BIN="$APP/Contents/MacOS/ClaudeStatusBar"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
@@ -27,9 +31,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleName</key><string>Claude Status Bar</string>
   <key>CFBundleDisplayName</key><string>Claude Status Bar</string>
   <key>CFBundleIdentifier</key><string>com.local.claudestatusbar</string>
-  <key>CFBundleExecutable</key><string>Claude Status Bar</string>
-  <key>CFBundleVersion</key><string>0.3.4</string>
-  <key>CFBundleShortVersionString</key><string>0.3.4</string>
+  <key>CFBundleExecutable</key><string>ClaudeStatusBar</string>
+  <key>CFBundleVersion</key><string>0.4.2</string>
+  <key>CFBundleShortVersionString</key><string>0.4.2</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
   <key>LSUIElement</key><true/>
@@ -42,6 +46,7 @@ PLIST
 mkdir -p "$APP/Contents/Resources"
 cp hooks/update.js hooks/lifecycle.js hooks/install.js hooks/uninstall.js "$APP/Contents/Resources/"
 cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+cp assets/completion.mp3 "$APP/Contents/Resources/completion.mp3"
 
 # --- Signing / notarization ---
 # For a clean (no Gatekeeper warning) release you need, set up once on this Mac:

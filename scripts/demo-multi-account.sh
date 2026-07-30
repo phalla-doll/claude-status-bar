@@ -30,13 +30,13 @@ cat > "$STATE/demo-acct-two.json" <<JSON
 JSON
 
 echo "Launching dev build… click the menu-bar icon to see the two account rows."
-pkill -x "Claude Status Bar" 2>/dev/null || true
+pkill -x ClaudeStatusBar 2>/dev/null || true
 sleep 1
 open "$APP"
 
 read -r -p "Press Enter to clean up and restore your real state… " _
 
-pkill -x "Claude Status Bar" 2>/dev/null || true
+pkill -x ClaudeStatusBar 2>/dev/null || true
 kill "$PID_A" "$PID_B" 2>/dev/null || true
 rm -f "$STATE/demo-acct-default.json" "$STATE/demo-acct-two.json"
 cp -a "$BACKUP/." "$STATE/" 2>/dev/null || true
