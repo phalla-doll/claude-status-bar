@@ -3,7 +3,7 @@
 All notable changes to Claude Status Bar are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.5.0] - 2026-09-17
 
 ### Fixed
 - Turning off **Thinking words** now hides the thinking label instead of falling back to the literal `Thinking…`. If **Show timer** remains on, the menu bar cleanly shows just the icon and elapsed time.
@@ -190,6 +190,7 @@ All notable changes to Claude Status Bar are documented here. This project follo
 - Signed and notarized DMG so it opens without a Gatekeeper warning.
 - Claude Code plugin marketplace manifest for the plugin install path.
 
+[0.5.0]: https://github.com/phalla-doll/claude-status-bar/releases/tag/v0.5.0
 [0.4.4]: https://github.com/m1ckc3s/claude-status-bar/releases/tag/v0.4.4
 [0.4.3]: https://github.com/m1ckc3s/claude-status-bar/releases/tag/v0.4.3
 [0.4.2]: https://github.com/m1ckc3s/claude-status-bar/releases/tag/v0.4.2
