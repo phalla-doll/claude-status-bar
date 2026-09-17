@@ -13,10 +13,20 @@
 **Icon stuck on "thinking" in the desktop app?** If a session hits your usage limit mid-turn, Claude Code fires no hook to close it out, so the icon keeps thinking until it times out (about 15 minutes). To clear it right away, click the icon in the menu bar and choose **Quit**.
 
 **The icon doesn't appear at all?**
-- Make sure a Claude session is actually running, not just a terminal window open. Start a new session (or restart Claude Code) and the bar appears automatically.
+- Make sure a supported agent session is actually running, not just a terminal window open. Start a new session and submit a prompt so the bar has activity to display.
 - A session that was already running *before* you installed gets picked up once it does something (0.4.1+), but starting a fresh session is the reliable way to bring the bar up the first time.
-- Confirm it's running with `pgrep -x ClaudeStatusBar`: a number means it's running (it may just be hidden), no output means it exited because no Claude session is active.
+- Confirm it's running with `pgrep -x ClaudeStatusBar`: a number means it's running (it may just be hidden), no output means it exited because no supported session is active.
 - If first-launch setup never took, run the installer manually: `node "/Applications/Claude Status Bar.app/Contents/Resources/install.js"`
+
+**Codex CLI doesn't appear?** Codex requires a one-time review before user hooks can run. Open
+`/hooks` inside Codex, review the hooks from `~/.codex/hooks.json`, and trust the status-bar
+entries. Then submit a new prompt. If `[features] hooks = false` is set in Codex configuration,
+the integration cannot receive lifecycle events.
+
+**Antigravity is working but never shows the yellow permission dot?** That is the current safe
+behavior. Antigravity's public hook API does not expose a passive permission-request event, and
+its pre-tool hook requires a permission decision. The status bar deliberately avoids registering
+one, so it cannot accidentally approve, deny, or force a prompt.
 
 **Installed via Homebrew?** Everything brew-specific (install, updates, the v0.4.0 rename transition, brew errors) lives in [HOMEBREW.md](HOMEBREW.md).
 

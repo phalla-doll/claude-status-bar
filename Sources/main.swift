@@ -336,7 +336,10 @@ final class StatusController: NSObject, NSMenuDelegate {
         var entrypoint: String  // CLAUDE_CODE_ENTRYPOINT: "cli", "claude-desktop", …
         var termProgram: String // TERM_PROGRAM for CLI sessions: "Apple_Terminal", "iTerm.app", …
         var account: String     // Claude Code account (from CLAUDE_CONFIG_DIR); "" = primary/default account
-        var pid: Int32          // the session's `claude` process; kill(pid,0) drives liveness. 0 = pre-upgrade file.
+        var agent: String       // state producer: "claude" (default), "opencode", "codex", or "antigravity"
+        var pid: Int32          // the session's agent process; kill(pid,0) drives liveness. 0 = pre-upgrade file.
+                                // For opencode this is the `opencode` process, which hosts SEVERAL
+                                // sessions — they share a pid and are reaped together, which is correct.
         var started: Bool       // true once the session had real activity (a prompt/tool); a merely-opened
                                 // conversation seeds started=false and stays out of the dropdown.
         var startedAt: Double, ts: Double
@@ -354,6 +357,7 @@ final class StatusController: NSObject, NSMenuDelegate {
             self.entrypoint = o["entrypoint"] as? String ?? ""
             self.termProgram = o["term_program"] as? String ?? ""
             self.account = o["account"] as? String ?? ""
+            self.agent = o["agent"] as? String ?? "claude"   // pre-opencode files have no field
             self.pid = Int32(truncatingIfNeeded: (o["pid"] as? NSNumber)?.intValue ?? 0)
             self.started = o["started"] as? Bool ?? false
             self.startedAt = (o["startedAt"] as? NSNumber)?.doubleValue ?? 0
@@ -380,7 +384,7 @@ final class StatusController: NSObject, NSMenuDelegate {
     var animStyle: AnimStyle = .web
     var showTimer = false
     var iconSystem = false // false = brand Orange; true = adaptive black/white (template image)
-    var useThinkingWords = true     // rotate a playful verb ("Manifesting…") in place of "Thinking…"
+    var useThinkingWords = true     // show a playful verb ("Manifesting…") while thinking; false hides the word
     var sessionWord: [String: String] = [:] // id -> current thinking word; re-picked on each entry into "thinking"
     var soundThreshold: Double = 0  // 0 = off; else the min turn length (seconds) that chimes on completion
     var turnStart: [String: Double] = [:]  // id -> active turn start, for the completion-sound length gate
@@ -879,6 +883,7 @@ final class StatusController: NSObject, NSMenuDelegate {
     func surfaceTag(_ entrypoint: String) -> String {
         switch entrypoint {
         case "claude-desktop": return "APP"
+        case "opencode", "codex", "antigravity": return ""   // agent-tagged instead; see pillSegments
         case "":               return ""
         default:               return "CLI"
         }
@@ -921,7 +926,16 @@ final class StatusController: NSObject, NSMenuDelegate {
 
     // The pill segments for a row: the surface (CLI/APP), prefixed by the account when >1 account is
     // live. Single-account (the common case) returns just [surface] — identical to before.
+    //
+    // Non-Claude sessions get a provider tag instead of a surface/account tag. The menu bar keeps
+    // one shared status icon for every agent, so this pill distinguishes mixed-agent session lists.
     func pillSegments(_ s: Session) -> [String] {
+        switch s.agent {
+        case "opencode":     return ["OPENCODE"]
+        case "codex":        return ["CODEX"]
+        case "antigravity":  return ["AGY"]
+        default: break
+        }
         let surface = surfaceTag(s.entrypoint)
         guard multiAccount else { return surface.isEmpty ? [] : [surface] }
         let acct = truncated(s.account.isEmpty ? "default" : s.account, max: 10, keep: 9)
@@ -978,7 +992,10 @@ final class StatusController: NSObject, NSMenuDelegate {
     }
 
     func workingLabel(_ s: Session) -> String {
-        if useThinkingWords, s.state == "thinking", let w = sessionWord[s.id], !w.isEmpty { return w + "…" }
+        if s.state == "thinking" {
+            guard useThinkingWords else { return "" }
+            if let w = sessionWord[s.id], !w.isEmpty { return w + "…" }
+        }
         if !s.label.isEmpty { return s.label }
         return s.state == "tool" ? "Working…" : "Thinking…"
     }
@@ -1262,7 +1279,7 @@ final class StatusController: NSObject, NSMenuDelegate {
 
     func sessionCount() -> Int { stateFileNames().count }
 
-    // Liveness probe: is this session's `claude` process still alive? kill(pid,0) returns 0 if the
+    // Liveness probe: is this session's agent process still alive? kill(pid,0) returns 0 if the
     // process exists; EPERM = exists but not ours (won't happen, same user); ESRCH = gone.
     func pidAlive(_ pid: Int32) -> Bool {
         if pid <= 0 { return false }
@@ -1271,6 +1288,9 @@ final class StatusController: NSObject, NSMenuDelegate {
 
     // Stay while Claude desktop is open OR a session is active; otherwise quit after a
     // short debounced grace (warmup-session churn must not kill us).
+    //
+    // opencode needs no probe of its own: its plugin opens the app on the first state write and
+    // that file then lives as long as the `opencode` process does, so sessionCount() covers it.
     func checkLifecycle() {
         let now = Date()
         if now.timeIntervalSince(launchedAt) < launchGrace { return }
@@ -1350,7 +1370,8 @@ final class StatusController: NSObject, NSMenuDelegate {
         guard let button = statusItem.button else { return }
         var text = activeBase
         if showTimer, startedAt > 0 {
-            text += "  " + elapsed(max(0, Int(Date().timeIntervalSince1970 - startedAt)))
+            let clock = elapsed(max(0, Int(Date().timeIntervalSince1970 - startedAt)))
+            text = text.isEmpty ? clock : text + "  " + clock
         }
         if text.isEmpty {
             button.imagePosition = .imageOnly

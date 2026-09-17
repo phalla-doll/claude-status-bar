@@ -5,8 +5,14 @@ All notable changes to Claude Status Bar are documented here. This project follo
 
 ## [Unreleased]
 
+### Fixed
+- Turning off **Thinking words** now hides the thinking label instead of falling back to the literal `Thinking…`. If **Show timer** remains on, the menu bar cleanly shows just the icon and elapsed time.
+
 ### Added
+- **Codex CLI sessions.** Native Codex lifecycle hooks now drive thinking, tool labels, permission state, interruption, completion, timers, sound, and process-based cleanup. Codex rows carry a `CODEX` pill and share the same multi-session priority rules as Claude and OpenCode.
+- **Antigravity CLI sessions.** Safe observer hooks now drive thinking, timers, completion, sound, and process-based cleanup for `agy`, with an `AGY` pill. Tool and permission hooks are intentionally omitted because Antigravity's current `PreToolUse` contract requires a gating decision rather than offering a passive observer event.
 - **The crab waves for permission.** With the Crab Walking style, a session awaiting your approval now shows the crab stopping and waving its claw (a slow 4-frame wag) instead of being replaced by the amber dot. The wave frames are generated at runtime from the standing sprite — claw drawn in the crab's own pixel style — and follow both color modes, including the shaded monochrome System template. The other animation styles keep the amber dot.
+- **opencode sessions.** The status bar now also tracks [opencode](https://opencode.ai) sessions, alongside Claude Code. Wiring is a single file copy — the installer drops a plugin into opencode's global plugin dir, and opencode auto-loads it — so there is no config file to merge and nothing of yours to clobber. Sessions land in the same `~/.claude/statusbar/` hub and share one dropdown; the menu bar keeps the one crab icon for every agent, and each opencode row carries an `OPENCODE` pill where a Claude Code row shows `CLI`/`APP`. Requires no dependencies and no Node on `PATH`: opencode runs plugins in-process under Bun.
 - **Multiple Claude Code accounts.** Run a second account through `CLAUDE_CONFIG_DIR` (e.g. a `claude2` shell alias) and its sessions can now join the status bar. Wire the account once with `CLAUDE_CONFIG_DIR="$HOME/.claude-2" node .../install.js`; scripts and session state stay in the shared `~/.claude/statusbar/` hub, so a single app aggregates every account. When two or more accounts are live, each row gains an account badge next to its `CLI`/`APP` pill (`[claude-2][CLI]`) to tell otherwise-identical rows apart; with one account the UI is unchanged. Set `CLAUDE_STATUSBAR_ACCOUNT` to customise a badge label. Addresses [#41](https://github.com/m1ckc3s/claude-status-bar/issues/41).
 
 ### Changed

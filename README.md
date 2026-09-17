@@ -1,5 +1,5 @@
 
-A tiny macOS menu bar app that shows **Claude Code's live status**: an animated Claude icon while it's thinking or running a tool, a yellow dot when it's awaiting your permission, and the elapsed time of the current turn. Lightweight, no window, no dock icon, no usage dashboards.
+A tiny macOS menu bar app that shows your coding agents' live status: an animated icon while they are thinking or working, a yellow dot when a supported agent is awaiting your permission, and the elapsed time of the current turn. Supports Claude Code, OpenCode, Codex CLI, and Antigravity CLI. Lightweight, no window, no dock icon, no usage dashboards.
 
 Built so you can tab away during a long "thinking" stretch and still see, at a glance, whether Claude is working, waiting on you, or done.
 
@@ -45,7 +45,7 @@ Or just run `brew upgrade --cask claude-status-bar` (brew), or download the late
 Everything is controlled from the menu:
 
 - **Show timer:** toggle the elapsed `1m 1s` clock.
-- **Thinking words:** rotate a playful verb (`Manifesting…`, `Percolating…`) in place of `Thinking…`, like Claude Code (on by default).
+- **Thinking words:** show a playful rotating verb (`Manifesting…`, `Percolating…`) while an agent thinks, like Claude Code. Turn it off for an icon-only display (or icon + timer when **Show timer** is on). On by default.
 - **Animation style:**
   - **Claude Spark**, the web/chat "morph" spark
   - **Claude Code**, the terminal glyph spinner
@@ -60,7 +60,16 @@ Everything is controlled from the menu:
 | Claude Code CLI (terminal) | ✅ |
 | Claude Code Desktop — **Code** tab | ✅ |
 | Cursor (Claude Code extension) | ✅ |
+| OpenCode | ✅ |
+| Codex CLI | ✅ |
+| Antigravity CLI (`agy`) | ✅ thinking/timer/completion |
 | Claude Desktop — **Chat/Cowork** tab | ❌ |
+
+The first launch installs integrations for the CLIs it finds. Codex requires one additional
+trust step: open `/hooks` in Codex and approve the newly added status-bar hooks. Antigravity's
+current hook API has no passive permission-request event, so its row keeps showing as working
+while an approval prompt is open; the integration deliberately does not install a hook that
+could change Antigravity's permission decision.
 
 **Multi-session support.** When several Claude Code sessions run at once (multiple terminals, or a terminal plus the desktop app), the menu bar surfaces the highest-priority one: a session awaiting your permission is never hidden behind one that's thinking. The dropdown lists every live session. Precise per-tab focus is in progress: **[issue #19 →](https://github.com/m1ckc3s/claude-status-bar/issues/19)**.
 
@@ -71,7 +80,7 @@ Everything is controlled from the menu:
 
 The app is stateless. Claude Code fires hooks as it works; the app polls those updates and aggregates them across every live session into a single icon, a permission dot if one needs you, animating if any session is working, resting when all are idle. It launches itself when Claude Code opens and quits when nothing's running, so there's nothing to manage.
 
-The installer merges its hooks into `~/.claude/settings.json` (backing it up first), and the app's only network activity is a once-a-day update check against GitHub's and Homebrew's public APIs ([details](PRIVACY.md)).
+The installer merges only its own entries into the hook configuration for supported agents it finds, backing existing files up first. Runtime state stays local under `~/.claude/statusbar/`. The app's only network activity is a once-a-day update check against GitHub's and Homebrew's public APIs ([details](PRIVACY.md)).
 
 ## Requirements
 

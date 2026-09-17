@@ -93,4 +93,4 @@ node "/Applications/Claude Status Bar.app/Contents/Resources/uninstall.js"
 brew uninstall --zap claude-status-bar
 ```
 
-The first line removes ONLY this app's hook entries from `~/.claude/settings.json`. It never touches your own hooks, other tools' hooks, or any other Claude Code settings; brew can't edit that file (it's shared with Claude Code itself), so the app's own uninstaller does the surgical edit. The second removes the app and every file it ever created (`~/.claude/statusbar`, caches, preferences). If you installed via DMG instead, replace the second line with: delete the app, then trash `~/.claude/statusbar`.
+The first line removes ONLY this app's entries from Claude, OpenCode, Codex, and Antigravity hook configuration. It preserves your own hooks and other tools' configuration; brew cannot safely edit those shared files, so the app's uninstaller performs the surgical cleanup. The second removes the app and every file it created (`~/.claude/statusbar`, caches, preferences). If you installed via DMG instead, replace the second line with: delete the app, then trash `~/.claude/statusbar`.

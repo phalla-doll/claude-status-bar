@@ -2,9 +2,9 @@
 
 Thanks for your interest. This is a tiny menu bar app and I'd like to keep it that way.
 
-It does one thing: show Claude Code's live status. It stays local (the only network call is a daily update check), free (no API key, no spend), and small (a status bar, not a dashboard).
+It does one thing: show local coding agents' live status. It stays local (the only network call is a daily update check), free (no API key, no spend), and small (a status bar, not a dashboard).
 
-It's also inspired a bunch of forks and ports, Codex versions, Linux, Windows, other agents, and I love seeing that. If your idea is one of those, it almost certainly belongs in your own fork, not here. This app is Claude Code on macOS, and I want to keep it that.
+The app remains macOS-only, but provider adapters for local coding agents are in scope when they can use documented lifecycle hooks without changing the agent's permission decisions.
 
 ## What's welcome
 
@@ -21,7 +21,7 @@ Also the [known issues and suggestions](https://github.com/m1ckc3s/claude-status
 - Hardcoding for one locale, provider, relay, or terminal.
 - New settings stores or dependencies for a minor feature when what's already there works.
 - Changing how your machine behaves: preventing sleep, holding power assertions, running privileged helpers, or any background action beyond showing status. The app displays state, it doesn't act on your system.
-- Codex support, ports to Linux or Windows, or support for other agents. Great projects, but as your own fork. This one is Claude Code on macOS.
+- Ports to Linux or Windows.
 
 ## Building
 
