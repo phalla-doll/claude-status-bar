@@ -106,6 +106,7 @@ process.stdin.on("end", () => {
   // TERM_PROGRAM identifies the terminal app for a CLI session (Apple_Terminal, iTerm.app,
   // vscode, WezTerm, …); the app uses it to bring that terminal to the front on a row click.
   const termProgram = process.env.TERM_PROGRAM || prev.term_program || "";
+  const hostBundleID = process.env.__CFBundleIdentifier || prev.host_bundle_id || "";
   // process.ppid IS this session's `claude` process (verified: hooks are spawned directly by it,
   // stable for the session's life, on both CLI and desktop). The app uses kill(pid,0) for liveness.
   // started:true — any update.js event (prompt/tool/permission/stop) is real activity, so the session
@@ -113,7 +114,7 @@ process.stdin.on("end", () => {
   // account carried over from prev for the odd event with no env (should not happen — the alias
   // exports CLAUDE_CONFIG_DIR for the whole session — but keeps the label stable if it did).
   const account = accountLabel() || prev.account || "";
-  const out = { state, label, tool: p.tool_name || "", project, cwd, sessionId: p.session_id || "", transcript: p.transcript_path || prev.transcript || "", entrypoint, term_program: termProgram, account, pid: process.ppid, started: true, startedAt, ts };
+  const out = { state, label, tool: p.tool_name || "", project, cwd, sessionId: p.session_id || "", transcript: p.transcript_path || prev.transcript || "", entrypoint, term_program: termProgram, host_bundle_id: hostBundleID, account, pid: process.ppid, started: true, startedAt, ts };
   try {
     fs.mkdirSync(stateDir, { recursive: true });
     const tmp = statePath + "." + process.pid + ".tmp";

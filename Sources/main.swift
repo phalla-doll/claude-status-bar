@@ -335,6 +335,7 @@ final class StatusController: NSObject, NSMenuDelegate {
         var cwd: String         // session working directory; "" on pre-upgrade files
         var entrypoint: String  // CLAUDE_CODE_ENTRYPOINT: "cli", "claude-desktop", …
         var termProgram: String // TERM_PROGRAM for CLI sessions: "Apple_Terminal", "iTerm.app", …
+        var hostBundleID: String // GUI host inherited by the agent (terminal/editor/native app)
         var account: String     // Claude Code account (from CLAUDE_CONFIG_DIR); "" = primary/default account
         var agent: String       // state producer: "claude" (default), "opencode", "codex", or "antigravity"
         var pid: Int32          // the session's agent process; kill(pid,0) drives liveness. 0 = pre-upgrade file.
@@ -356,6 +357,7 @@ final class StatusController: NSObject, NSMenuDelegate {
             self.cwd = o["cwd"] as? String ?? ""
             self.entrypoint = o["entrypoint"] as? String ?? ""
             self.termProgram = o["term_program"] as? String ?? ""
+            self.hostBundleID = o["host_bundle_id"] as? String ?? ""
             self.account = o["account"] as? String ?? ""
             self.agent = o["agent"] as? String ?? "claude"   // pre-opencode files have no field
             self.pid = Int32(truncatingIfNeeded: (o["pid"] as? NSNumber)?.intValue ?? 0)
@@ -681,8 +683,11 @@ final class StatusController: NSObject, NSMenuDelegate {
             for s in visible {
                 let eff = s.eff.isEmpty ? effectiveState(s, now: now) : s.eff
                 let view = SessionRowView(id: s.id, width: CGFloat(uiConfig()["boxWidth"] ?? 300))
-                let sid = s.id, ep = s.entrypoint, tp = s.termProgram
-                view.onClick = { [weak self] in menu.cancelTracking(); self?.openSession(sid, entrypoint: ep, termProgram: tp) }
+                let sid = s.id, ep = s.entrypoint, tp = s.termProgram, bid = s.hostBundleID, pid = s.pid
+                view.onClick = { [weak self] in
+                    menu.cancelTracking()
+                    self?.openSession(sid, entrypoint: ep, termProgram: tp, hostBundleID: bid, pid: pid)
+                }
                 configureSessionRow(view, s, eff: eff)
                 let it = NSMenuItem()
                 it.view = view
@@ -1042,10 +1047,29 @@ final class StatusController: NSObject, NSMenuDelegate {
     // Row click. Desktop session: raise the Claude app. Focusing the exact conversation isn't
     // possible; every deep-link route either imports a copy or needs an id the app never exposes
     // (re-verified 2026-08-08, Claude 1.26832.0 — see the ROADMAP desktop section, issue #58).
-    // CLI session: bring its terminal APP to the front (zero permission). Targeting the exact
+    // CLI session: bring its terminal APP to the front (zero permission). Native provider apps are
+    // activated from their process/bundle metadata. Targeting the exact
     // window/tab needs a one-time Automation grant, deferred to the opt-in build (issue #19).
-    func openSession(_ id: String, entrypoint: String, termProgram: String) {
+    func openSession(_ id: String, entrypoint: String, termProgram: String,
+                     hostBundleID: String, pid: Int32) {
         if entrypoint == "claude-desktop" { openClaude(); return }
+
+        // Prefer the process that owns the state file. This handles native agent apps without
+        // hardcoding provider bundle IDs. A terminal CLI is normally activation-prohibited, so it
+        // falls through to the inherited host bundle identifier below.
+        if pid > 0, let owner = NSRunningApplication(processIdentifier: pid),
+           owner.activationPolicy != .prohibited,
+           owner.bundleIdentifier != Bundle.main.bundleIdentifier,
+           owner.activate(options: [.activateAllWindows, .activateIgnoringOtherApps]) { return }
+
+        // __CFBundleIdentifier is inherited from the launching GUI app on macOS. Unlike TERM_PROGRAM,
+        // it is an exact LaunchServices identity and works even when the display name differs.
+        if !hostBundleID.isEmpty, hostBundleID != Bundle.main.bundleIdentifier {
+            let hosts = NSRunningApplication.runningApplications(withBundleIdentifier: hostBundleID)
+            if let host = hosts.first(where: { $0.activationPolicy != .prohibited }) ?? hosts.first,
+               host.activate(options: [.activateAllWindows, .activateIgnoringOtherApps]) { return }
+        }
+
         // Map TERM_PROGRAM to a name `open -a` understands; most terminals match verbatim.
         let app: String
         switch termProgram {

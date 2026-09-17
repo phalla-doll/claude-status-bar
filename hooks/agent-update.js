@@ -162,6 +162,7 @@ function run() {
       : (input.transcriptPath || previous.transcript || ""),
     entrypoint: provider,
     term_program: process.env.TERM_PROGRAM || previous.term_program || "",
+    host_bundle_id: process.env.__CFBundleIdentifier || previous.host_bundle_id || "",
     account: "",
     agent: provider,
     pid: ownerPid(),

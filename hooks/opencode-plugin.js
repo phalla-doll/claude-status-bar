@@ -61,6 +61,7 @@ export const ClaudeStatusBar = async ({ directory, worktree }) => {
   // bring that terminal forward on a row click. Absent under `opencode serve`, which is
   // headless — the row then simply isn't clickable, same as an unknown Claude Code surface.
   const termProgram = process.env.TERM_PROGRAM || "";
+  const hostBundleID = process.env.__CFBundleIdentifier || "";
   const prev = new Map();   // sessionID -> last written payload (we are the only writer here)
 
   const statePathFor = (sid) => path.join(stateDir, safeId(sid) + ".json");
@@ -87,6 +88,7 @@ export const ClaudeStatusBar = async ({ directory, worktree }) => {
       transcript: "",
       entrypoint: "opencode",
       term_program: termProgram,
+      host_bundle_id: hostBundleID,
       account: "",
       agent: "opencode",
       pid: process.pid,

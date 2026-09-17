@@ -9,7 +9,13 @@ const adapter = path.resolve(__dirname, "../hooks/agent-update.js");
 
 const invoke = (home, provider, event, payload) => {
   const output = execFileSync(process.execPath, [adapter, provider, event], {
-    env: { ...process.env, HOME: home, NODE_ENV: "test", TERM_PROGRAM: "TestTerminal" },
+    env: {
+      ...process.env,
+      HOME: home,
+      NODE_ENV: "test",
+      TERM_PROGRAM: "TestTerminal",
+      __CFBundleIdentifier: "com.example.TestTerminal",
+    },
     input: JSON.stringify(payload),
     encoding: "utf8",
   });
@@ -32,6 +38,7 @@ test("Codex lifecycle maps to the shared state contract", (t) => {
   assert.equal(thinking.state, "thinking");
   assert.equal(thinking.agent, "codex");
   assert.equal(thinking.project, "my-project");
+  assert.equal(thinking.host_bundle_id, "com.example.TestTerminal");
   assert.ok(thinking.startedAt > 0);
 
   invoke(home, "codex", "pre", { ...common, tool_name: "apply_patch" });
