@@ -21,7 +21,7 @@ body:
       label: Preflight Checklist
       description: Please confirm before submitting
       options:
-        - label: I have searched [existing issues](https://github.com/m1ckc3s/claude-status-bar/issues) and [known issues](https://github.com/m1ckc3s/claude-status-bar/issues/22) and this hasn't been reported yet
+        - label: I have searched [existing issues](https://github.com/m1ckc3s/claude-status-bar/issues) and the [known issues](https://github.com/m1ckc3s/claude-status-bar/blob/main/TROUBLESHOOTING.md#known-issues) and this hasn't been reported yet
           required: true
         - label: I have checked the [Troubleshooting guide](https://github.com/m1ckc3s/claude-status-bar/blob/main/TROUBLESHOOTING.md) and my issue isn't covered there
           required: true

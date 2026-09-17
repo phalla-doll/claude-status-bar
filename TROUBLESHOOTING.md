@@ -6,7 +6,7 @@
 
 **Using Chat or Cowork in the desktop app?** Those don't move the icon. Claude Code Chat and Cowork don't fire the same hooks this app runs on, so there's no live signal to drive the timer or the animation. Only Claude Code sessions move it: the desktop app's Code mode, or `claude` in a terminal. You'll still see the resting spark while the desktop app is open.
 
-**Icon stuck on "thinking" in the terminal after you interrupted?** If you press Esc or Ctrl+C during the early thinking phase, before any output has streamed, Claude Code doesn't emit a signal for the app to catch, so the icon can sit on thinking until it times out (about 15 minutes). Sending any new prompt clears it right away. This one is terminal only, and it's an upstream Claude Code quirk, tracked in the [known issues](https://github.com/m1ckc3s/claude-status-bar/issues/22).
+**Icon stuck on "thinking" in the terminal after you interrupted?** If you press Esc or Ctrl+C during the early thinking phase, before any output has streamed, Claude Code doesn't emit a signal for the app to catch, so the icon can sit on thinking until it times out (about 15 minutes). Sending any new prompt clears it right away. This one is terminal only, and it's an upstream Claude Code quirk, covered under [Known issues](#known-issues) below.
 
 **Icon disappeared weeks ago and never came back?** If you installed Node via Homebrew, versions before 0.4.2 wrote a version-specific Node path into the hooks, and a `brew upgrade node` broke them silently. Fixed in 0.4.2: update the app and launch it once, and the hooks repair themselves.
 
@@ -33,6 +33,19 @@ one, so it cannot accidentally approve, deny, or force a prompt.
 **Seeing 2 icons?** The desktop app shows its own menu bar icon (the quick-screenshot one). To avoid two icons sitting side by side, open Claude's **Settings → General** and turn that built-in menu bar item off.
 
 **A second Claude account (via `CLAUDE_CONFIG_DIR`) doesn't show up?** The app only wires hooks into the primary `~/.claude` by default, so sessions from an account like `~/.claude-2` are invisible until you wire that account too. Run the installer once with `CLAUDE_CONFIG_DIR` pointed at it: `CLAUDE_CONFIG_DIR="$HOME/.claude-2" node "/Applications/Claude Status Bar.app/Contents/Resources/install.js"`. See [Multiple accounts](README.md#multiple-accounts) for the full setup. Once two accounts are live, each row shows an account badge (`[claude-2][CLI]`) so you can tell otherwise-identical rows apart.
+
+---
+
+## Known issues
+
+**Interrupting during the reasoning phase (CLI only) can freeze the icon on "thinking".** If you hit Ctrl+C while a turn is still in the extended-thinking phase, before any answer text has streamed, Claude Code writes nothing to the transcript and fires no hook, so there's no signal for the app to react to. The session sits on "thinking" until the 15-minute cap.
+- Clears instantly if you type a new prompt in that session or close the terminal.
+- Interrupting *after* answer text starts streaming recovers normally, within a poll.
+- The desktop app is unaffected. Root cause is upstream in Claude Code, not fixable from here.
+
+**Clicking a session brings the app forward, not the exact session.** Desktop sessions raise the Claude app rather than that specific conversation; terminal sessions raise your terminal app rather than that window or tab. Exact terminal focus needs a one-time Automation permission grant and lives in a test build ([#19](https://github.com/m1ckc3s/claude-status-bar/issues/19)).
+
+**The app launches and tracks sessions inside Cursor.** Cursor's Third-party skills feature reads the same `~/.claude/settings.json` and runs your hooks against its own agent, so Cursor sessions show up here too. Most things work (spark, timer, rows); the amber permission dot, the CLI/APP pill and click-to-focus don't, because Cursor doesn't pass those events. To turn it off, disable **Third-party skills** in Cursor's Settings → Features. Your Claude Code usage is unaffected.
 
 ---
 Back to the [README](README.md).
